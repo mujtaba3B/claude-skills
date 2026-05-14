@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Symlink every skill in this repo into ~/.claude/skills/ so Claude Code
+# discovers them. Idempotent: re-run after pulling updates.
+#
+# Each top-level directory containing a SKILL.md is treated as a skill.
+# Directories like .git/ are skipped.
+
+set -euo pipefail
+
+REPO="$(cd "$(dirname "$0")" && pwd)"
+TARGET="$HOME/.claude/skills"
+mkdir -p "$TARGET"
+
+# Forward-link skills.
+for skill in "$REPO"/*/; do
+  [[ -f "$skill/SKILL.md" ]] || continue
+  name="$(basename "$skill")"
+  link="$TARGET/$name"
+  if [[ -e "$link" && ! -L "$link" ]]; then
+    echo "skip: $link exists and is not a symlink (manual cleanup required)"
+    continue
+  fi
+  ln -sfn "$skill" "$link"
+  echo "linked: /$name -> $skill"
+done
+
+# Clean stale symlinks pointing into this repo whose targets no longer exist
+# (e.g. after renaming or deleting a skill directory).
+for link in "$TARGET"/*; do
+  [[ -L "$link" ]] || continue
+  target="$(readlink "$link")"
+  case "$target" in
+    "$REPO"/*)
+      if [[ ! -e "$target" ]]; then
+        rm "$link"
+        echo "removed stale: $link -> $target"
+      fi
+      ;;
+  esac
+done
+
+echo
+echo "Done. Restart your Claude Code session to pick up new skills."
