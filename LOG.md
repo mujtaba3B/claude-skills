@@ -34,3 +34,16 @@ Existing options considered and rejected:
 Skill walks LOG.md (almost always), INDEX.md (only if new artifacts), CLAUDE.md (only if conventions changed), README.md (rarely), and persistent memory (only if new durable cross-session knowledge emerged). Also handles the Pencil `🚧 NEW NEW` mockup demotion sweep when both a `.pen` was touched AND a deploy happened.
 
 Hard-codes the user's interaction style: one question at a time in the prominent `### ❓ QUESTION` format, no em-dashes, no batched lists. Seeded by dogfooding it on the mujtab.ai + namecheap-cli + cloudflare-token sprint where the absence of this discipline showed up as scattered LOG entries written defensively, mid-session.
+
+### `[meta][protection]` Enabled branch protection on `main`
+Initial pushes (both the repo init and the close-out skill addition) went straight to `main` with no PR. For a public repo where the README invites people to clone, that's a real gap: no CI gate, no commit-message style enforcement, no forced final read-through.
+
+Enabled via `gh api -X PUT /repos/mujtaba3B/claude-skills/branches/main/protection` with: `required_pull_request_reviews` (count 0, so solo workflow still works), `required_conversation_resolution` true, `enforce_admins` false (so admin can override in emergencies), force pushes blocked, deletions blocked. From now on even solo work must go through a PR.
+
+### `[skill][close-out]` v2: applied-first, no per-phase previews
+Dogfooded the v1 skill on the close-out for this session. Three problems surfaced:
+1. The skill previewed every drafted entry in a table and asked for approval at each phase. User wanted "do it and summarize at the end", not "preview, approve, apply, repeat".
+2. Edits were applied sequentially across multiple repos, when parallel tool calls would have been faster.
+3. The 7-phase structure encouraged ask-gates at every step instead of one batched apply.
+
+Rewrote the skill: default mode is APPLY-FIRST, parallel tool calls everywhere, one-line summary at the end. Per-phase questions removed; only ask when a decision is genuinely ambiguous (e.g., "this LOG entry could go in repo A or B"). Added explicit anti-patterns covering sequential tool calls, re-reading files after edits, and previewing entries. Memory: see `close-out-no-preview`.
