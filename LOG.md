@@ -20,6 +20,23 @@ Chosen shape: skill auto-bundles recent conversation context, infers the ideal e
 
 Lives in `public-claude-skills/` (not `gstack-extensions/`) because the skill has no gstack dependency: it just shells out to `codex` and `gemini` and uses the standard `Agent` tool. Publicly useful as a standalone pattern.
 
+### `[skill][expert-review]` Dogfooded `/expert-review` on itself; six improvements + a real bug
+
+Ran the skill against its own design as the first test. The panel of three (Claude subagent, OpenAI via codex, Gemini) surfaced six convergent adjustments and one live bug:
+
+1. Output contract per expert should be fixed-field (thesis, key risks, assumptions, recommended next step, confidence 1-5), not free-form prose. Synthesis-of-prose is much worse than synthesis-of-comparable-fields.
+2. Save `prompt.md` and `meta.json` alongside the three response files so a run is interpretable a day later.
+3. Persona statement should offer one-line alternatives the user can swap to with a single reply, not just be stated as a fait accompli.
+4. Synthesis must include a Steelman section when all three experts substantially agree. Three LLMs trained on overlapping data converging is the most likely silent failure mode.
+5. Claude expert prompt needs an explicit independence line: it is a subagent with no shared context with the orchestrator and should push back on the orchestrator's framing rather than ratify it.
+6. Prompt now requires evidence (concrete reasoning, lived experience, specific examples) and tells the expert that speculation belongs in Assumptions, not Key risks. Vague advice is the dominant failure mode otherwise.
+
+Also: narrow carve-out from the original no-fourth-opinion rule. A `Synthesis-quality notes` section is now allowed in the output, scoped strictly to evidence quality, partial failures, and convergence concerns. Not for casting a vote on the underlying decision.
+
+Live bug found during the run: `codex exec "<prompt>"` hangs indefinitely when stdin is open, even when the prompt is passed as a positional arg. The CLI tries to read additional input from stdin. Fix: always run as `codex exec "$(cat prompt.md)" < /dev/null`. Captured as a cross-project memory since any skill that shells out to codex will hit this.
+
+Decisions deferred: no model pinning for the CLIs (use best available per provider), no per-model prompt wrappers (one shared prompt is fine for v1).
+
 ## 2026-05-14
 
 ### `[meta][repo]` Created the repo as a public home for standalone Claude Code skills
