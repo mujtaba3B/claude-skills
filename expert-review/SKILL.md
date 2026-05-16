@@ -79,21 +79,51 @@ Hard rules for the prompt itself:
 
 ## Step 4: Fan out in parallel
 
-Create a timestamped output directory and run all three experts concurrently. They are independent, so they go in a single message with three tool calls.
+Create a timestamped output directory, write the composed prompt to a file, and run all three experts concurrently.
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
 DIR="/tmp/expert-review-$TS"
 mkdir -p "$DIR"
+# Write the composed prompt to a file (this avoids shell-quoting issues with
+# multi-line prompts containing quotes, backticks, and $-signs).
+cat > "$DIR/prompt.md" <<'PROMPT_EOF'
+<the full composed prompt from Step 3 goes here>
+PROMPT_EOF
 ```
 
-Then in one assistant turn, make three tool calls in parallel:
+**Then print a one-line status update to the user before fanning out**, so they can see what's about to happen:
 
-- **Claude expert**: use the `Agent` tool with `subagent_type: "general-purpose"`. Pass the full composed prompt as the `prompt`. Instruct the agent in the prompt itself to write its final response to `$DIR/claude.md` and also return it as the tool result.
-- **OpenAI expert**: `Bash` tool, command `codex exec "<prompt>" > "$DIR/openai.md" 2>&1`. Use a heredoc with single-quoted delimiter to avoid shell expansion. Increase timeout to 300000ms (5 min).
-- **Gemini expert**: `Bash` tool, command `gemini -p "<prompt>" > "$DIR/gemini.md" 2>&1`. Same heredoc treatment. 5 min timeout.
+> Spawning three experts in parallel: Claude (subagent), OpenAI (codex), Gemini (gemini). Saving to `/tmp/expert-review-<TS>/`. Status will print as each lands.
 
-If any single expert fails or times out, continue with the others. Note the failure in the synthesis but do not block on it.
+Then in **one assistant turn**, make three tool calls in parallel:
+
+- **Claude expert**: use the `Agent` tool with `subagent_type: "general-purpose"`. Pass the full composed prompt as `prompt`. Instruct the agent in the prompt itself to write its final response to `$DIR/claude.md` and also return it as the tool result.
+- **OpenAI expert**: `Bash` tool, `run_in_background: true`, command:
+  ```bash
+  codex exec "$(cat "$DIR/prompt.md")" < /dev/null > "$DIR/openai.md" 2>&1
+  ```
+  The `< /dev/null` is **required**: `codex exec` reads stdin for additional input even when a prompt arg is provided, and will hang on an open stdin. Reading the prompt from a file (via `cat`) avoids any quoting/escaping bugs that arise from passing multi-line strings as shell arguments.
+- **Gemini expert**: `Bash` tool, `run_in_background: true`, command:
+  ```bash
+  gemini -p "$(cat "$DIR/prompt.md")" < /dev/null > "$DIR/gemini.md" 2>&1
+  ```
+
+Both bash calls run in the background so the user can see them spawn immediately. Use a 5-minute timeout (300000ms) if you ever switch them to foreground.
+
+### Progress visibility
+
+After the parallel kickoff, the user wants to know things are working. Do this:
+
+1. Immediately after the three tool calls fire, print a status line listing the three experts and noting they are running in parallel.
+2. As each one completes (the Agent returns; each background Bash sends a completion notification), print a one-liner:
+   > `Claude: done (42s, 3.1 KB)`
+   > `Gemini: done (19s, 2.4 KB)`
+   > `OpenAI: still running...`
+3. If any expert is still running after the first two land, mention it explicitly so the user knows you are waiting on it, not stuck. Do **not** poll or sleep manually. You will be notified automatically when a background Bash completes.
+4. If any expert fails (non-zero exit, timeout, or stderr-only output), print the failure on its own line and continue with the rest. Do not block synthesis on it.
+
+If any single expert fails or times out, continue with the others. Note the failure in the synthesis explicitly ("Gemini timed out") rather than producing a confident two-expert consensus that reads like three.
 
 ---
 
