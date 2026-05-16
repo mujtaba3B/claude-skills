@@ -47,11 +47,15 @@ Based on the subject, decide what kind of expert is ideal. Examples:
 
 If the user passed a hint like `/expert-review focus on security tradeoffs`, weave that into the persona. If they passed a full persona, use it verbatim.
 
-State the chosen persona to the user in one line before fanning out, so they can redirect if it's off:
+State the chosen persona to the user, and offer one or two one-line alternatives they can swap to with a single reply. This way they can redirect without cancelling:
 
-> Sending this to three experts as a *<persona>*. Fanning out now.
+```
+Persona: *<chosen persona>*.
+Alternatives if this is off: (a) <one-line alt>, (b) <one-line alt>.
+Fanning out now unless you swap.
+```
 
-Don't ask for approval, just state it. The user can interrupt if wrong.
+Don't actually wait for an answer. Print this and proceed in the same turn. If the user replies with a swap before the fan-out completes, you'll catch it in the next turn. (For long sessions, persona inference is often the weakest step; the swap escape valve costs nothing.)
 
 ---
 
@@ -62,18 +66,21 @@ Compose one self-contained prompt. All three experts receive the **same** prompt
 1. **Role**: "You are a <persona>. You are giving a second opinion to another engineer."
 2. **Context**: a distilled version of what's happening. Include the subject, the current direction, the constraints, any relevant file paths or code snippets. The expert has not seen this conversation, so the prompt must stand alone.
 3. **The question**: what specifically should they evaluate? Usually some form of "Critique the current approach. Where would you push back? What are we likely getting wrong? What would you do differently and why?"
-4. **Output shape**: ask for a structured response so synthesis is easier. Suggested shape:
-   - **Verdict** (1-2 sentences): is the current direction sound, partially sound, or off?
-   - **Top adjustments** (bulleted): the highest-leverage changes they'd recommend, each with a one-line *why*.
-   - **Risks the current plan underweights** (bulleted, optional).
-   - **What they'd want to know more about before committing** (bulleted, optional).
-5. **Length cap**: ask for under ~500 words. Concise is the point.
+4. **Output contract** (fixed fields, in this order, so synthesis can compare like-for-like):
+   - **Thesis** (1-2 sentences): the expert's bottom-line take on the current direction.
+   - **Key risks** (bulleted): the things most likely to go wrong, each with a one-line *why*.
+   - **Assumptions** (bulleted): assumptions the expert is making that, if wrong, would change their take.
+   - **Recommended next step** (1-3 sentences): the most useful next concrete action.
+   - **Confidence** (1-5 integer): how confident the expert is in their thesis, where 1 = wild guess and 5 = would stake reputation.
+5. **Evidence requirement**: tell the expert explicitly that claims should be backed by concrete reasoning, lived experience, or specific examples. Vague or generic advice ("consider scalability", "watch performance") is not useful. If the expert is uncertain or speculating, they should say so in the Assumptions section rather than dressing it up as a Key Risk.
+6. **Length cap**: ask for under ~500 words. Concise is the point.
 
 Hard rules for the prompt itself:
 - No em-dashes (project-wide rule).
 - Self-contained: a fresh expert reading only this prompt should be able to weigh in. No "as discussed" or "see above".
 - Include exact file paths when they're load-bearing.
 - Don't paraphrase the user's words if they expressed something specific. Quote them.
+- For the Claude expert specifically: add an extra line to the prompt instructing it that it is a fully independent subagent with no shared context with the orchestrator, and it should actively push back on the orchestrator's framing rather than ratify it. This is the cheapest defense against agreement theater.
 
 ---
 
@@ -90,7 +97,18 @@ mkdir -p "$DIR"
 cat > "$DIR/prompt.md" <<'PROMPT_EOF'
 <the full composed prompt from Step 3 goes here>
 PROMPT_EOF
+# Save run metadata so this run is interpretable later.
+cat > "$DIR/meta.json" <<META_EOF
+{
+  "timestamp": "$TS",
+  "persona": "<the chosen persona, one line>",
+  "subject": "<one-line description of what was reviewed>",
+  "experts": ["claude", "openai", "gemini"]
+}
+META_EOF
 ```
+
+After each expert's bash call completes, append an entry to `$DIR/meta.json` (or a sibling `results.json`) capturing its exit code and elapsed time. Skip if it adds friction; the timestamps and exit codes from the tool results are enough to reconstruct after the fact.
 
 **Then print a one-line status update to the user before fanning out**, so they can see what's about to happen:
 
@@ -134,10 +152,15 @@ Read all three result files. Produce a concise synthesis for the user. The synth
 ```
 **Persona used:** <one line>
 
+**Confidence:** Claude <1-5>, OpenAI <1-5>, Gemini <1-5>. <One-line read on whether they were sure or hedging.>
+
 **Where the experts converge:**
 - <bullet> . <one-line why this matters for the current direction>
 - <bullet>
 - ...
+
+**Steelman against the consensus** (only include this section if all three substantially agree):
+- <one short paragraph: what would the strongest case AGAINST the convergent view look like? Mention if any expert flagged this themselves, or note that none did.>
 
 **Where they disagree (and which side seems stronger here):**
 - <topic> . <one side> vs <other side>. <one-line take on which matters given the user's constraints>
@@ -151,6 +174,9 @@ Read all three result files. Produce a concise synthesis for the user. The synth
 **Things you may want to decide before continuing:**
 - <open question the experts surfaced>
 - ...
+
+**Synthesis-quality notes** (optional, only if warranted):
+- <e.g., "All three responses were polished but evidence-light. Treat as priors, not data."> <or> <e.g., "Gemini timed out. This is a two-expert synthesis.">
 ```
 
 Rules for the synthesis:
@@ -159,6 +185,8 @@ Rules for the synthesis:
 - Do NOT paste verbatim expert text. Distill.
 - If an expert recommendation conflicts with a known project constraint (something in CLAUDE.md, MEMORY.md, a locked-in choice), flag it and lean toward the constraint.
 - No em-dashes.
+- The **Steelman against the consensus** section is required when all three experts substantially agree on the same direction. Convergence-bias is the most likely failure mode: three LLMs trained on overlapping data agreeing is not the same as three humans agreeing. Write a short, honest counter-case, even if you have to construct it yourself.
+- The **Synthesis-quality notes** section is the only place where you may add an orchestrator-side observation. Scope it tightly: flag evidence quality, partial failures, or convergence concerns. Do **not** add a new substantive opinion on the underlying decision. Your job is to distill, not to vote.
 - End with a one-line footer pointing to the saved files:
 
 > Full opinions saved to `/tmp/expert-review-<TS>/`. Say "show me what Gemini said" (or claude / openai) for the verbatim response.
@@ -179,6 +207,7 @@ Do not:
 - Run the experts sequentially. They are independent. Parallel is the point.
 - Show the verbatim opinions unless asked.
 - Let one expert's failure block the others.
-- Add a fourth opinion of your own to the synthesis as if it were a peer of the three. Your role is to distill, not to vote.
+- Add a fourth substantive opinion on the underlying decision. The narrow `Synthesis-quality notes` section is allowed, but it is for evidence quality, failures, and convergence concerns only, not for casting your own vote on the decision.
 - Use em-dashes anywhere (including inside the prompt sent to the experts, since their output may be quoted later).
 - Skip the persona-statement line in Step 2. The user needs a chance to redirect before tokens are spent.
+- Skip the steelman section when all three agree. Convergence among LLMs trained on overlapping data is the most likely silent failure mode.
