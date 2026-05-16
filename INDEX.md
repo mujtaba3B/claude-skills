@@ -26,6 +26,7 @@ Per `CLAUDE.md`: keep this updated when artifacts are created, renamed, or depre
 | Path | What it does |
 |---|---|
 | `handoff-prompt/` | `/handoff-prompt` . Generates a self-contained handoff prompt that a fresh Claude Code session can pick up from. Snapshots task, decisions, file paths, conventions, open questions; copies to clipboard for Cmd+V into a new session. |
+| `close-out/` | `/close-out` . End-of-session housekeeping for the CLAUDE.md / LOG.md / INDEX.md / README.md / memory convention. Surveys what happened in the session, drafts entries one phase at a time, applies after approval. Also runs the Pencil `🚧 NEW NEW` mockup demotion sweep when applicable. |
 
 ## External references
 

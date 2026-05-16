@@ -30,6 +30,7 @@ That's it. Restart Claude Code.
 ## What's included
 
 - **`/handoff-prompt`** . Generate a self-contained handoff prompt that a fresh Claude Code session can pick up from. Snapshots the current task, decisions, file paths, conventions, and open questions, and copies the prompt to your clipboard so you can paste it into a new session with Cmd+V. Useful when context is getting long, or when you want to fork off a parallel investigation in a clean session.
+- **`/close-out`** . End-of-session housekeeping for projects that follow the `CLAUDE.md` / `LOG.md` / `INDEX.md` plus persistent memory convention. Surveys what happened (git activity, decisions made in chat, new infra), walks each schema file one at a time, drafts entries in the project's existing voice, and applies after you approve. Also handles the Pencil `🚧 NEW NEW` mockup demotion sweep when a deploy happened. Distinct from `/document-release`: this is about your internal project-keeping discipline, not public-facing release docs.
 
 ## Updating
 
