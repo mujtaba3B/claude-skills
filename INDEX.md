@@ -27,6 +27,7 @@ Per `CLAUDE.md`: keep this updated when artifacts are created, renamed, or depre
 |---|---|
 | `handoff-prompt/` | `/handoff-prompt` . Generates a self-contained handoff prompt that a fresh Claude Code session can pick up from. Snapshots task, decisions, file paths, conventions, open questions; copies to clipboard for Cmd+V into a new session. |
 | `close-out/` | `/close-out` . End-of-session housekeeping for the CLAUDE.md / LOG.md / INDEX.md / README.md / memory convention. Surveys what happened in the session, drafts entries one phase at a time, applies after approval. Also runs the Pencil `🚧 NEW NEW` mockup demotion sweep when applicable. |
+| `expert-review/` | `/expert-review` . Spawns three LLM experts in parallel (Claude subagent, OpenAI via `codex`, Gemini via `gemini`) to get a second opinion on the current approach. Infers ideal persona from context, fans out the same prompt, saves full opinions to `/tmp/expert-review-<ts>/`, returns a concise synthesis of suggested adjustments. |
 
 ## External references
 

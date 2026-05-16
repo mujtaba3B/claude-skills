@@ -6,6 +6,20 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ---
 
+## 2026-05-16
+
+### `[skill][expert-review]` Added `/expert-review` for fast three-LLM second opinions
+Need: while collaborating with Claude on an idea, the user often wants an outside expert opinion before committing. The desired pattern is a panel: Claude, OpenAI, and Gemini each role-play the ideal expert for the situation, in parallel, and Claude distills their feedback into adjustments to the current direction.
+
+Existing options considered and rejected:
+- gstack `/codex` consult: only one outside opinion (OpenAI), no Gemini, no synthesis layer. Useful, but a single voice.
+- gstack `/benchmark-models`: measures model performance on a prompt (latency, tokens, cost). Wrong purpose. That's model selection, not idea critique.
+- gstack `/autoplan`: chains Claude reviewer personas (CEO, eng, design, DX). All same model, no outside opinion.
+
+Chosen shape: skill auto-bundles recent conversation context, infers the ideal expert persona from that context (with optional user hint), composes one self-contained prompt, fans out in parallel to a Claude subagent + `codex exec` + `gemini -p`, saves all three responses to `/tmp/expert-review-<ts>/{claude,openai,gemini}.md`, and returns ONLY a concise synthesis of suggested adjustments. Full opinions surface only on follow-up request.
+
+Lives in `public-claude-skills/` (not `gstack-extensions/`) because the skill has no gstack dependency: it just shells out to `codex` and `gemini` and uses the standard `Agent` tool. Publicly useful as a standalone pattern.
+
 ## 2026-05-14
 
 ### `[meta][repo]` Created the repo as a public home for standalone Claude Code skills
