@@ -6,6 +6,11 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ---
 
+## 2026-05-17
+
+### `[meta][release]` v2026.05.17 shipped: first CalVer release with `/second-opinion` and `/distill-question-and-answer-log-to-principles`
+First tagged release of the repo. Establishes the CalVer convention going forward. Notes call out the `/expert-review` → `/second-opinion panel` alias and the new four-mode shape so muscle memory carries over. Release URL: https://github.com/mujtaba3B/claude-skills/releases/tag/v2026.05.17.
+
 ## 2026-05-16
 
 ### `[meta][release]` Adopted CalVer (`v2026.05.17` style) for releases; Claude prompts after every merge
