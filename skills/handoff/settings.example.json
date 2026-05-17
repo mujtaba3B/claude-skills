@@ -1,0 +1,4 @@
+{
+  "_comment": "Copy this file to settings.json to override handoff defaults. settings.json is gitignored. Tilde (~) is expanded to $HOME.",
+  "default_cwd": "~"
+}
