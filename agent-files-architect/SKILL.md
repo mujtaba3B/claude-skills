@@ -93,7 +93,7 @@ For each CLAUDE.md found, scan for inline pointers to other `.md` files (regex o
 
 ### Symlink handling
 
-`stat -f %i` (BSD) each discovered file to capture inode. Dedupe by inode. Never write to a path whose inode also belongs to a path outside cwd's project tree.
+Capture the inode for each discovered file. macOS/BSD uses `stat -f %i <path>`; GNU/Linux uses `stat -c %i <path>`. Detect the platform with `uname -s` (Darwin = BSD syntax, anything else = GNU syntax). Dedupe by inode. Never write to a path whose inode also belongs to a path outside cwd's project tree.
 
 ### Deep mode (`--deep` opt-in only)
 
@@ -215,7 +215,7 @@ Branching:
 
 - `y`: apply all patches in one parallel `Edit` batch. Update `.last-run` flag. Write final report and proceed to Step 9.
 - `show diff`: print `proposed-patches.diff` verbatim, then re-ask the same question.
-- `N` (default): save the report without applying. Do not touch the `.last-run` flag if invoked from `/close-out`; do touch it on a manual run since the audit itself was the value.
+- `N` (default): save the report without applying. Update `.last-run` either way (manual or close-out): the audit itself is the value, and the trigger gate already qualified the close-out invocation. The `.last-run` write rule is owned by Step 9 (single source of truth).
 
 No per-patch confirmation. The bundle is the unit.
 
