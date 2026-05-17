@@ -45,7 +45,7 @@ Removes only the hook entries it owns (identified by the sentinel `mutwo:tab-sta
 - Five hooks: `UserPromptSubmit` and `PostToolUse` flip state to working (green); `Stop` and `Notification` flip state to idle (red); `PreToolUse` with matcher `AskUserQuestion` also flips to idle so the question itself shows in the notification.
 - Each hook runs a small shell script that walks up the process tree to find the iTerm2 pty, then writes iTerm2 escape sequences (`OSC 6` for tab color, `OSC 1337;SetBadgeFormat` for the badge) directly to that pty.
 - On idle, the same script fires a macOS notification via `osascript`. Body is pulled from the hook input's `message` field for `Notification`-hook events (mid-turn permission prompts) or from the last assistant text in the transcript for `Stop`-hook events.
-- The installer also sets `preferredNotifChannel: "notifications_disabled"` so Claude Code's own native banner does not duplicate the custom one. Re-installing on an older version that set a `statusLine` will clear that stale entry.
+- The installer also sets `preferredNotifChannel: "notifications_disabled"` (only if that key is not already present in `settings.json`, so existing user preferences are preserved) so Claude Code's own native banner does not duplicate the custom one. Re-installing on an older version that set a `statusLine` will clear that stale entry.
 - State files live in `~/.claude/state/<session_id>.json` and `<session_id>.tty`. Files older than 30 days are auto-cleaned on each hook fire.
 
 ## Caveats
