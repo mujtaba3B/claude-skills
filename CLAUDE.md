@@ -70,6 +70,40 @@ Update when a skill is added/renamed/deprecated or when a load-bearing external 
 
 ---
 
+## Release convention (CalVer + GitHub Releases)
+
+This repo uses **calendar-versioned releases** (`v2026.05.17` format). Decided 2026-05-17. Rationale: a flat collection of standalone skills people copy-paste does not benefit from SemVer's breaking-change signal as much as it benefits from "you can see at a glance when something new shipped". GitHub Releases is the announcement surface; the version number just reinforces it.
+
+### When to cut a release
+
+**Every time a PR lands on `main`.** No release-less merges to `main`. If a PR is too trivial to release (typo fix in a README), it should not be on `main` in the first place; squash it into the next feature PR.
+
+### Claude's prompt obligation
+
+After merging any PR to `main` in this repo, surface this to the user before ending the session:
+
+> Just merged to main. Per the CalVer convention this triggers a release. Want me to cut `v<today>` now? (Title, body summarising what's new, generated from the merged commits.)
+
+If the user says yes, run the release workflow below. If no, log the deferral in `LOG.md` and move on. Do not silently skip the prompt.
+
+### Release workflow
+
+1. Tag format: `v2026.05.17`. If shipping twice in one day, append `.1`, `.2`, etc.: `v2026.05.17.1`.
+2. Generate the release notes from the merged commits since the last tag:
+   - **Added**: new skills.
+   - **Changed**: meaningful updates to existing skills (new modes, restructures).
+   - **Removed / renamed**: call these out prominently. Even with a shim, the user-facing slash command may have changed. People scanning the release notes need to know their muscle memory will break.
+3. Create the release with `gh release create v<date> --title 'v<date>' --notes '<notes>' --target main`. Generate the notes via heredoc.
+4. Append a one-line LOG entry under the day's section: `[meta][release] v<date> shipped: <one-line summary>`.
+
+### What NOT to include in releases
+
+- Internal refactors that don't change skill behavior (those don't justify a release on their own).
+- Pure documentation tweaks (combine with the next real release).
+- Branch-protection or repo-config changes (LOG-only, no release).
+
+---
+
 ## When this file should be updated
 
 If a repo-wide convention changes (new top-level file, new install behavior, new layout), update this file AND log it in LOG.md. Convention drift is the #1 reason schema files become useless.
