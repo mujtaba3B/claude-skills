@@ -38,13 +38,13 @@ Pass `MUTWO_YES=1 ./install.sh` to skip the confirmation prompt (use for scripte
 ./uninstall.sh
 ```
 
-Removes only the hook entries it owns (identified by the sentinel `mutwo:tab-state-indicator` inside each command). Any other hooks you have in `settings.json` are preserved. Also clears any stale `statusLine` left over from earlier versions of this module that pointed at our script.
+Removes only the hook entries it owns (identified by the sentinel `mutwo:tab-state-indicator` inside each command). Any other hooks you have in `settings.json` are preserved. Also clears any stale `statusLine` left over from earlier versions of this module that pointed at our script. Removes `preferredNotifChannel` only if the installer set it (tracked via a `.mutwo.tab_state_indicator_set_preferred_notif` ownership flag), so a user who already had `notifications_disabled` configured before installing keeps that preference. Cleans up an empty `.mutwo` namespace if it would be left behind.
 
 ## How it works
 
 - Five hooks: `UserPromptSubmit` and `PostToolUse` flip state to working (green); `Stop` and `Notification` flip state to idle (red); `PreToolUse` with matcher `AskUserQuestion` also flips to idle so the question itself shows in the notification.
 - Each hook runs a small shell script that walks up the process tree to find the iTerm2 pty, then writes iTerm2 escape sequences (`OSC 6` for tab color, `OSC 1337;SetBadgeFormat` for the badge) directly to that pty.
-- On idle, the same script fires a macOS notification via `osascript`. Body is pulled from the hook input's `message` field for `Notification`-hook events (mid-turn permission prompts) or from the last assistant text in the transcript for `Stop`-hook events.
+- On idle, the same script fires a macOS notification via `osascript`. Body source depends on the hook event: the question text from `tool_input.questions[0].question` for `PreToolUse`-hook events on `AskUserQuestion`, the hook input's `message` field for `Notification`-hook events (mid-turn permission prompts), or the last assistant text in the transcript for `Stop`-hook events.
 - The installer also sets `preferredNotifChannel: "notifications_disabled"` (only if that key is not already present in `settings.json`, so existing user preferences are preserved) so Claude Code's own native banner does not duplicate the custom one. Re-installing on an older version that set a `statusLine` will clear that stale entry.
 - State files live in `~/.claude/state/<session_id>.json` and `<session_id>.tty`. Files older than 30 days are auto-cleaned on each hook fire.
 
