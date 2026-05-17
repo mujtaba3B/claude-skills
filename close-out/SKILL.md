@@ -70,11 +70,21 @@ Skip entirely if no `.pen` files were touched this session OR no deploy happened
 
 If both apply: use `mcp__pencil__get_editor_state` to find `🚧 NEW NEW ` frames in each touched `.pen`, cross-reference what actually shipped (use the diff / commits / LOG entry you just wrote), and apply demotions (remove prefix, remove orange dashed stroke) for the frames whose content is in production. Demotions are reversible, so apply directly. Add a brief note under the relevant `[<feature>][spec]` LOG tag so the wireframe state stays auditable.
 
-### Step 5: One-line summary
+### Step 5: Distill the question-and-answer pending log
+
+The `AskUserQuestion` capture hook (`~/.claude/scripts/question-and-answer-capture.sh`) appends raw Q+A captures to `~/.claude/projects/-Users-mujtaba-dev/memory/.question-and-answer-pending.jsonl`. Close-out is the natural point to process them.
+
+- Count `status: "pending"` lines in that JSONL.
+- If zero: skip this step silently. No mention in the summary.
+- If non-zero: invoke `/distill-question-and-answer-log-to-principles`. The skill walks each pending entry, surfaces proposals one at a time, and writes only what the user approves. It also handles the conflict hierarchy (CLAUDE.md beats feedback memory beats question_and_answer_decision).
+
+Do not try to distill inline here; the dedicated skill knows the contract.
+
+### Step 6: One-line summary
 
 End with one or two lines like:
 
-> Closed out. Updated LOG.md (3 entries across 2 repos), saved 1 memory. PR opened on public-claude-skills (link). CLAUDE / INDEX / README unchanged. No Pencil sweep.
+> Closed out. Updated LOG.md (3 entries across 2 repos), saved 1 memory, distilled 4 pending Q+A (2 approved). PR opened on public-claude-skills (link). CLAUDE / INDEX / README unchanged. No Pencil sweep.
 
 Do not print a long recap; the user already saw the inventory and can read `git log`.
 

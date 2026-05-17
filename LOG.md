@@ -8,6 +8,19 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-16
 
+### `[skill][distill-question-and-answer-log-to-principles]` Added the Q+A capture and distill loop
+Need: every time Claude uses `AskUserQuestion`, the user's answer evaporates at session end and the same questions get re-asked in future sessions. The existing auto-memory system handles `feedback_*.md` and `project_*.md` well but does nothing for tool-mediated decisions.
+
+Built three things together (capture hook + new memory type + distill skill); the skill lives in this repo, the hook lives at `~/.claude/scripts/question-and-answer-capture.sh` because hooks are global-machine concerns not per-skill assets.
+
+Two rounds of `/expert-review` shaped scope, ruthlessly. Original design (PreToolUse keyword grep + Stop-hook `claude -p` distiller + reinforcement counter + 90-day decay) was cut to capture-only + user-approved distill. Expert convergence: PreToolUse grep is false-positive-heavy and adds hot-path latency; unattended `claude -p` is a silent-corruption vector; n>=2 + decay is cargo-culted from spaced repetition without the right semantics. Cuts saved roughly 60 percent of the build surface and shifted writes from machine-trusted to user-reviewed.
+
+Five expert adjustments accepted in v1: capture surrounding conversation context, per-entry status on the JSONL (approved/rejected/deferred), drop ExitPlanMode capture (payload too thin), drop "Rejected options" from the memory body (situational, not durable), define a conflict-handling rule (CLAUDE.md > feedback > question_and_answer_decision; distiller surfaces conflicts, never auto-writes). Statusline nudge was dropped because the user separately removed the usage statusline; `/close-out` is the natural cadence.
+
+Wired distillation into `/close-out` as Step 5 (between Pencil demotion and the summary). Skill is also invocable standalone. Re-entrancy guard via `Q_AND_A_HOOK_DISABLE=1` env var so a future `claude -p` invocation cannot feed the loop back into itself.
+
+macOS does not ship `flock`. Capture hook uses a Python `fcntl.flock` one-liner for the locked append. Verified with a 20-way parallel write that produced 20 distinct valid JSON lines.
+
 ### `[skill][expert-review]` Added `/expert-review` for fast three-LLM second opinions
 Need: while collaborating with Claude on an idea, the user often wants an outside expert opinion before committing. The desired pattern is a panel: Claude, OpenAI, and Gemini each role-play the ideal expert for the situation, in parallel, and Claude distills their feedback into adjustments to the current direction.
 
