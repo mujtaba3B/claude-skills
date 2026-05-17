@@ -8,6 +8,13 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-16
 
+### `[meta][release]` Adopted CalVer (`v2026.05.17` style) for releases; Claude prompts after every merge
+Need: public repo with no release history yet; user wants people to be able to see when new skills come out. Considered SemVer (new skill = minor) vs SemVer-with-user-convention (new skill = major) vs CalVer.
+
+Settled on CalVer. SemVer's main value is signaling breakage to library consumers planning upgrades; this is a flat pile of skills people copy-paste, where that signal is mostly wasted. CalVer makes the version number reinforce the "shipped recently" signal that the GitHub Releases page already carries, instead of competing with it.
+
+Format: `v2026.05.17`. Suffix `.1`, `.2` if shipping twice in one day. Every merge to `main` triggers a release. Convention recorded in `CLAUDE.md` so Claude is required to prompt the user for a release after each merge; silent skip is not allowed.
+
 ### `[skill][second-opinion]` Added Step 3.5 CLI staleness check with 24h TTL
 Need: user does not invoke `codex` or `gemini` often outside `/second-opinion`, so the CLIs drift behind upstream. Once before, an old `codex exec` produced a stdin-hang bug that a later version fixed. Wanted a way to catch drift without taxing every invocation.
 
