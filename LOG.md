@@ -8,6 +8,35 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-16
 
+### `[skill][second-opinion]` Added Step 3.5 CLI staleness check with 24h TTL
+Need: user does not invoke `codex` or `gemini` often outside `/second-opinion`, so the CLIs drift behind upstream. Once before, an old `codex exec` produced a stdin-hang bug that a later version fixed. Wanted a way to catch drift without taxing every invocation.
+
+Dogfooded `/second-opinion panel` on the design itself before building. Three-expert consensus shaped v1:
+1. No unconditional per-invocation network check. 1-2s of pre-dispatch latency is paid 100% of the time to catch a once-a-quarter bug. Bad ratio.
+2. 24-hour TTL via flag file (`~/.claude/.second-opinion-cli-check`) is the right cadence (Homebrew, gh follow this pattern). Hot path becomes a sub-millisecond `cat`; `npm view` only runs when the TTL has expired.
+3. No background or auto upgrade. Synchronous-after-confirmation only. Global `npm install -g` mid-dispatch can change the binary the current run is about to use.
+4. Fail silent on network errors. `timeout 2` plus empty-string check means a flaky registry results in "cannot determine staleness", not "skill cannot dispatch".
+
+Steelman against the consensus (none of the three experts engaged with it): the user explicitly asked for the inline interactive upgrade offer. The convergent expert opinion was "no inline offer" based on warning-fatigue priors that assume high-frequency invocation. But the TTL gate solves the fatigue problem (the offer fires at most once per 24h), and for a user who rarely invokes these CLIs the inline offer is the most valuable moment to surface drift. Kept the inline offer, gated by the TTL.
+
+Applies to all modes, including `claude`, because panel uses both CLIs and single-`claude` runs are often followed by single-codex/gemini follow-ups in the same session. Skipping the check in `claude` mode would leave a hole.
+
+### `[skill][second-opinion]` Consolidated `/expert-review` into `/second-opinion` with four modes
+Need: `/expert-review` only had one shape (panel of three). For many situations a single second opinion from a specific model (codex, gemini, or a Claude subagent) is the right tool. Spinning up two skills with overlapping triggers was the wrong split.
+
+New skill at `second-opinion/` with modes `claude` / `codex` / `gemini` / `panel`. Reuses the existing prompt-composition rules (no em-dashes, evidence requirement, Claude-subagent anti-sycophancy line, fixed output contract) unchanged. Step 4 dispatch is mode-aware. Step 5 synthesis has two templates: panel (Converge / Steelman / Disagree / Adjustments) and single-expert (Thesis / Key risks / Adjustments / optional Steelman).
+
+Dogfooded `/expert-review` on the design before building. Three convergent adjustments from the panel shaped v1:
+1. Do NOT always ask for mode. Infer when the slash arg or trigger phrase is unambiguous (`/second-opinion codex`, "ask gemini"); only `AskUserQuestion` when bare. Every unnecessary confirmation trains users away from the skill.
+2. Do NOT pre-recommend Panel in the `AskUserQuestion` options. Panel is the most expensive path; nudging it by default creates a quiet cost trap.
+3. Keep `Key risks` in the single-expert template. A second opinion without failure modes is just a summary.
+
+Split decisions where the panel disagreed: kept a thin `expert-review` shim (Claude + OpenAI argued path-based slash-command muscle memory survives only with a shim; Gemini wanted hard-replace). Skipped a 5th adversarial mode (Claude + OpenAI: named adversarial often produces performative contrarianism; Gemini wanted it). Skipped a tiebreaker mode (all three agreed: workflow, not a base mode).
+
+Migration: `expert-review/SKILL.md` is now a one-page shim that forwards `/expert-review` invocations to `/second-opinion panel`, preserving any inline hint. The shim should never grow past forwarder size. Live bug from the prior `/expert-review` run still applies: `codex exec` needs `< /dev/null` AND `--skip-git-repo-check` when run from `/tmp/`.
+
+
+
 ### `[skill][distill-question-and-answer-log-to-principles]` Added the Q+A capture and distill loop
 Need: every time Claude uses `AskUserQuestion`, the user's answer evaporates at session end and the same questions get re-asked in future sessions. The existing auto-memory system handles `feedback_*.md` and `project_*.md` well but does nothing for tool-mediated decisions.
 
