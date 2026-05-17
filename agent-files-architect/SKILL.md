@@ -323,8 +323,13 @@ AGE_DAYS=$(( (NOW - LAST) / 86400 ))
 T1=$([ "$AGE_DAYS" -ge 7 ] && echo 1 || echo 0)
 
 # Trigger 2: sessions since last run >= 10
-# Count files in the project's session dir newer than .last-run.
-PROJECT_DIR="$HOME/.claude/projects/-Users-mujtaba-dev"
+# Count session files newer than .last-run in this project's Claude Code
+# session dir. The slug is derived from cwd: Claude Code stores per-project
+# session state at ~/.claude/projects/<slug>/ where <slug> is the absolute
+# path with / replaced by -. If the dir does not exist (first session in
+# this project), find returns nothing and the trigger silently does not fire.
+PROJECT_SLUG=$(printf '%s' "$PWD" | sed 's|/|-|g')
+PROJECT_DIR="$HOME/.claude/projects/$PROJECT_SLUG"
 SESSIONS_NEW=$(find "$PROJECT_DIR" -type f -newer "$FLAG" 2>/dev/null | wc -l | tr -d ' ')
 T2=$([ "$SESSIONS_NEW" -ge 10 ] && echo 1 || echo 0)
 
