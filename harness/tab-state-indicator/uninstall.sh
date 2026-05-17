@@ -42,8 +42,35 @@ NEW_SETTINGS=$(jq \
         )
       )
     | .hooks |= with_entries(select(.value | length > 0))
-    # Remove statusLine only if it is still ours.
-    | if (.statusLine.command // "") == $status_path then del(.statusLine) else . end
+    # Remove statusLine only if it is an object whose command is ours. The
+    # type guard prevents jq from crashing on a malformed settings.json where
+    # .statusLine is a non-object value.
+    | (
+        if ((.statusLine // {}) | type) == "object" and (.statusLine.command // "") == $status_path
+        then del(.statusLine)
+        else .
+        end
+      )
+    # Remove preferredNotifChannel only if our install marked it. The ownership
+    # flag distinguishes "we set it" from "user had this value before install".
+    # Type-guard .mutwo too: if it is a non-object value we did not write the
+    # flag during install, so we leave preferredNotifChannel alone.
+    | (
+        if ((.mutwo // {}) | type) == "object" and (.mutwo.tab_state_indicator_set_preferred_notif // false) == true
+        then del(.preferredNotifChannel)
+             | del(.mutwo.tab_state_indicator_set_preferred_notif)
+        else .
+        end
+      )
+    # Clean up an empty .mutwo namespace so we do not leave {"mutwo": {}} behind.
+    # Only touch .mutwo if it is an object; a non-object value belongs to
+    # someone else and we leave it untouched.
+    | (
+        if ((.mutwo // {}) | type) == "object" and ((.mutwo // {}) == {})
+        then del(.mutwo)
+        else .
+        end
+      )
   ' "$SETTINGS")
 
 TMP_NEW=$(mktemp)

@@ -55,7 +55,40 @@ NEW_SETTINGS=$(jq \
     | .hooks.PostToolUse     = (((.hooks.PostToolUse     // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $working_cmd}]}])
     | .hooks.Stop            = (((.hooks.Stop            // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
     | .hooks.Notification    = (((.hooks.Notification    // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
-    | .statusLine = {type: "command", command: $status_cmd}
+    # AskUserQuestion notifications: fire idle on PreToolUse for that tool only,
+    # so the user gets a banner showing the question itself the moment Claude
+    # invokes it. Notification-hook does not fire for AskUserQuestion in
+    # current Claude Code, so this is the only path that catches AUQ.
+    | .hooks.PreToolUse      = (((.hooks.PreToolUse      // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "AskUserQuestion", hooks: [{type: "command", command: $idle_cmd}]}])
+    # statusLine cleanup: only delete if it is an object whose command matches
+    # ours. The type guard prevents jq from erroring out on a malformed
+    # settings.json where .statusLine is a non-object value.
+    | (
+        if ((.statusLine // {}) | type) == "object" and (.statusLine.command // "") == $status_cmd
+        then del(.statusLine)
+        else .
+        end
+      )
+    # Suppress Claude Code native banner so the custom osascript notification
+    # is the only one. Only set if unset, to respect existing user preference.
+    # Track ownership in a .mutwo namespace so uninstall can distinguish
+    # "we set it" from "user already had this value before install". Type-guard
+    # .mutwo writes too, so a non-object .mutwo (set by someone else or
+    # malformed) does not crash the installer; in that case we set the
+    # preferredNotifChannel but skip the ownership flag, so uninstall will
+    # conservatively leave preferredNotifChannel alone.
+    | (
+        if has("preferredNotifChannel") | not
+        then .preferredNotifChannel = "notifications_disabled"
+             | (
+                 if ((.mutwo // {}) | type) == "object"
+                 then .mutwo = ((.mutwo // {}) + {tab_state_indicator_set_preferred_notif: true})
+                 else .
+                 end
+               )
+        else .
+        end
+      )
   ' "$SETTINGS")
 
 # --- Diff preview --------------------------------------------------------
@@ -89,13 +122,14 @@ fi
 
 # --- Copy scripts -------------------------------------------------------
 cp "$HERE/scripts/claude-state.sh" "$TARGET_STATE"
-cp "$HERE/scripts/claude-statusline.sh" "$TARGET_STATUS"
-chmod +x "$TARGET_STATE" "$TARGET_STATUS"
+chmod +x "$TARGET_STATE"
+
+# Clean up stale statusline script from older versions, if present.
+rm -f "$TARGET_STATUS"
 
 echo ""
 echo "Installed $MOD_NAME."
 echo "  Scripts:  $TARGET_STATE"
-echo "            $TARGET_STATUS"
 echo "  Settings: $SETTINGS (sentinel: $SENTINEL)"
 echo "  Backup:   $BACKUP"
 echo ""
