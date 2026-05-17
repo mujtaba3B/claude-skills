@@ -18,7 +18,9 @@ The convention only pays off if the files stay current. This skill is the discip
 
 ## How to run it
 
-**Default mode is fast and parallel. Apply first, summarize at the end.** Do NOT preview each drafted entry and ask for approval. The user explicitly chose speed over per-entry review (see the `close-out-no-preview` feedback memory). The summary is where the user reviews; if they want changes, iterate then.
+**Default mode is fast and parallel for LOG / INDEX / CLAUDE / README edits. Apply first, summarize at the end.** Do NOT preview those drafted entries and ask for approval; the summary is where the user reviews; if they want changes, iterate then.
+
+**Memory writes are the exception: they require explicit per-entry approval.** Memory persists across every future session and quietly shapes Claude's behavior, so a wrong memory is a long-tail cost. Always confirm each proposed memory write or update with the user via a single `AskUserQuestion` multi-select before writing. See Step 2 for the gate's exact shape.
 
 ### Step 0: Print the run roadmap
 
@@ -84,9 +86,25 @@ For LOG entries: match the existing file's voice (terse vs. discursive) and tag 
 
 For memory: read `MEMORY.md` first to avoid duplicates. Prefer updating an existing memory file over creating a new one.
 
-**Apply all edits in parallel tool calls.** Read all the files you need to edit in one parallel batch; apply all the Edits in a follow-up parallel batch. Do not Read-then-Edit-then-Read-then-Edit serially across repos.
+**Apply all NON-memory edits (LOG / INDEX / CLAUDE / README) in parallel tool calls.** Read all the files you need to edit in one parallel batch; apply all the Edits in a follow-up parallel batch. Do not Read-then-Edit-then-Read-then-Edit serially across repos. Do not preview these entries; the user reviews them in the Step 6 summary.
 
-**Do not preview entries.** Do not generate "here's what I'm about to add, look right?" tables. Just apply. If something needs revision, the user will say so after the summary.
+**Memory writes go through an explicit approval gate.** After deciding what memory you would write (new files or updates to existing ones), pause and present the full set to the user in a single `AskUserQuestion` with `multiSelect: true`. One option per proposed memory. The option `label` is a short title (under 50 chars). The option `description` is a one-line summary of what that memory would say plus its type and target filename (e.g., `new reference_codex_install.md` or `update reference_codex_cli_breaking_changes.md`). The question text is:
+
+> Which of these memories should I write? (Each persists across all future sessions.)
+
+Set `header: "Memory writes"`. Use multi-select so the user can approve, reject, or partially approve in one click. Only after the user submits do you apply the approved subset (in parallel). For any memory the user rejects, do not write it, do not "save a smaller version", do not retry. If the user wants a different cut they will say so.
+
+If zero memories are proposed in a given close-out, skip the gate entirely; do not ask an empty question.
+
+**Carve-outs (skip the gate, narrow exceptions):**
+
+- User explicitly said "save this", "remember this", or named the memory they want written during the session: their request IS the approval, do not re-ask.
+- User asked you to forget or remove a memory: that is a delete, not a write. Confirm what you are deleting once, then proceed.
+- Trivial mechanical edits to keep memory consistent with itself (renaming a slug in `MEMORY.md` to match a renamed file, fixing a broken `[[link]]`): not new claims, just bookkeeping. Mention in summary; no gate.
+
+**Non-interactive mode.** If you are running in a mode where `AskUserQuestion` cannot fire (piped-prompt mode like `claude -p`, CI runs, scripted invocations), do NOT silently fall back to writing the memory. Skip the write and surface a warning in your output for each skipped memory: `Memory write skipped: <slug> (non-interactive mode, approval gate could not run). Re-run interactively or re-prompt with explicit approval to save.` List each skipped slug so the user can re-trigger only the ones they want.
+
+**Header reservation (re-entrancy).** The string `"Memory writes"` is a reserved AskUserQuestion `header` value: a Q+A capture hook that records every AskUserQuestion answer (such as the user's `~/.claude/scripts/question-and-answer-capture.sh`) must skip questions carrying this header, otherwise the gate's approval question itself becomes a future memory candidate and the loop feeds itself. If your environment has such a hook, ensure it is configured to skip `"Memory writes"` before relying on the gate at scale; flag this to the user the first time you notice the gap.
 
 ### Step 3: Push and PR
 
@@ -194,7 +212,7 @@ No em-dashes anywhere in the skill's output. Use periods, colons, semicolons, pa
 
 1. **Sequential tool calls when parallel would work.** Reading 5 files? One parallel batch. Editing 4 files? One parallel batch. Do not interleave.
 2. **Re-reading a file you just edited to "verify".** Edit / Write would have errored if it failed; the harness tracks state for you.
-3. **Per-entry preview tables.** The user said no.
+3. **Per-entry preview tables for LOG / INDEX / CLAUDE / README.** The user said no for those. Memory writes ARE gated (see Step 2); do not conflate the two.
 4. **Updating `CLAUDE.md` for single-use decisions.** That belongs in `LOG.md`.
 5. **Creating new memory entries that duplicate existing ones.** Read `MEMORY.md` first.
 6. **Pushing directly to a branch-protected `main`.** Check branch protection during inventory; open a PR for protected repos.
