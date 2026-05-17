@@ -22,7 +22,7 @@ The convention only pays off if the files stay current. This skill is the discip
 
 ### Step 0: Print the run roadmap
 
-Before doing anything else, print a fixed 6-line roadmap so the user can follow the run. Mark each step with a status indicator that updates as work progresses:
+Before doing anything else, print the fixed roadmap (6 main steps plus a conditional 5.5) so the user can follow the run. Mark each step with a status indicator that updates as work progresses:
 
 - `⏳` pending
 - `🔄` in-progress
@@ -38,6 +38,7 @@ Close-out plan:
 - ⏳ 3. Push and PR (direct push or open PR depending on branch protection)
 - ⏳ 4. Pencil sweep (only if .pen was edited and a deploy happened)
 - ⏳ 5. Distill Q+A pending log (only if pending entries exist)
+- ⏳ 5.5. Agent files architect (only if TTL/session/activity trigger fires)
 - ⏳ 6. Summary
 ```
 
@@ -111,6 +112,14 @@ The `AskUserQuestion` capture hook (`~/.claude/scripts/question-and-answer-captu
 
 Do not try to distill inline here; the dedicated skill knows the contract.
 
+### Step 5.5: Agent files architect (conditional)
+
+Invoke `/agent-files-architect --close-out`. The `--close-out` flag bypasses the manual mode menu and tells the skill to run silently. The skill then runs its own trigger gate (7 days since last run, 10 sessions since last run, or 3 agent files touched this session) and no-ops if nothing fires. Close-out passes the third signal through the `AGENT_FILES_TOUCHED_THIS_SESSION` env var, counted from Step 1 inventory (any session-touched file matching `CLAUDE.md`, `AGENTS.md`, `LOG.md`, `INDEX.md`, `MEMORY.md`, or a `.md` referenced from a CLAUDE.md in the up-walk).
+
+When fired, the architect runs up-walk only (no `--deep`, `--research`, or `--review`), targets a whole-run budget under 2 seconds, and applies the single approval gate inline. If the user declines the bundle, the report is saved and close-out continues to Step 6. If no trigger fires, mark this step `⏭️` with reason "no trigger" and move on.
+
+Do not duplicate the gate logic here; the architect owns it.
+
 ### Step 6: One-line summary
 
 Reprint the full roadmap with final markers, then end with one or two lines like:
@@ -126,6 +135,7 @@ Close-out plan:
 - ✅ 3. Push and PR (PR #4 opened on public-claude-skills)
 - ⏭️ 4. Pencil sweep (no .pen edits this session)
 - ⏭️ 5. Distill Q+A (no pending entries)
+- ⏭️ 5.5. Agent files architect (no trigger)
 - ✅ 6. Summary
 ```
 

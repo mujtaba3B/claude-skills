@@ -4,7 +4,7 @@ Personal Claude Code skills for project documentation, session handoffs, and sec
 
 ![License](https://img.shields.io/github/license/mujtaba3B/claude-skills)
 ![Latest release](https://img.shields.io/github/v/release/mujtaba3B/claude-skills)
-![Skills](https://img.shields.io/badge/skills-4-blue)
+![Skills](https://img.shields.io/badge/skills-5-blue)
 
 ## Why this repo
 
@@ -40,6 +40,7 @@ Restart Claude Code.
 | [`/close-out`](close-out/SKILL.md) | End-of-session housekeeping for projects that keep `CLAUDE.md` / `LOG.md` / `INDEX.md` files at the repo root. Surveys what happened in the session, drafts entries for each schema file, and applies them after you approve. |
 | [`/second-opinion`](second-opinion/SKILL.md) | Get a second opinion from another LLM. Four modes: a single opinion from Claude (subagent), Codex (OpenAI), or Gemini, or a panel of all three in parallel. Returns a concise synthesis instead of raw opinions. Requires `codex` and `gemini` CLIs on `PATH` for those modes. |
 | [`/distill-question-and-answer-log-to-principles`](distill-question-and-answer-log-to-principles/SKILL.md) | Reads a log of past `AskUserQuestion` answers, classifies each one, and proposes new memory entries for you to approve. Goal: stop the same question from being re-asked across sessions. |
+| [`/agent-files-architect`](agent-files-architect/SKILL.md) | Audits the markdown files AI coding agents read on every session (`CLAUDE.md`, `AGENTS.md`, `LOG.md`, `INDEX.md`, `MEMORY.md`, plus any `.md` referenced from a CLAUDE.md in the up-walk). Builds a precedence graph across the layers, checks for stale pointers, reports file sizes, lists three-file gaps across repos, and bundles safe mechanical patches behind a single approval gate. Cold invocation shows a four-option mode menu (Standard / Deep / +Research / +Expert panel); auto-fires inside `/close-out` when a staleness trigger hits. |
 
 ## Updating
 
