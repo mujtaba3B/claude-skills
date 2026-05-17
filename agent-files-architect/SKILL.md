@@ -55,7 +55,7 @@ If `--close-out` was passed: skip the menu, skip Steps 7 and 8 unconditionally, 
 
 Print a one-line roadmap so the user can follow:
 
-```
+```text
 agent-files-architect plan:
 - ⏳ 1. Discover in-scope files (up-walk[, deep])
 - ⏳ 2. Build precedence graph
@@ -78,7 +78,7 @@ When called from `/close-out` (i.e., `--close-out` passed), the menu is bypassed
 
 Walk from cwd up to `$HOME`. At each level, look for:
 
-```
+```text
 CLAUDE.md, AGENTS.md, LOG.md, INDEX.md, MEMORY.md,
 .cursorrules, .cursor/rules, .github/copilot-instructions.md
 ```
@@ -201,7 +201,7 @@ Render `proposed-patches.diff` as a single unified diff covering the bundle. Ren
 
 Print a tight summary (5 to 12 bullets), then ask one question:
 
-```
+```text
 ---
 
 ### ❓ QUESTION
@@ -265,7 +265,7 @@ Never auto-fire. The flag is the gate.
 
 Output layout (all under `~/.claude/agent-files-architect/`):
 
-```
+```text
 ~/.claude/agent-files-architect/
   <ISO-TS>/                      e.g. 2026-05-17T08-30-00/
     report.md
@@ -293,7 +293,7 @@ v1 does not prune old runs.
 
 5 to 12 bullets, grouped by severity. Example shape:
 
-```
+```text
 Findings (this run):
 
 - 1 contradiction surfaced (em-dash rule mentioned in 3 files; project CLAUDE.md restates without conflict).
