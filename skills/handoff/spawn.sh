@@ -1,14 +1,51 @@
 #!/usr/bin/env bash
 # Spawn a new iTerm2 vertical split running `claude` with a preloaded prompt.
 # Reads the prompt from a file (avoids argv size and shell-quoting issues).
-# Usage: spawn.sh <prompt-file>
+# Usage: spawn.sh <prompt-file> [<cwd-override>]
+#
+# CWD resolution order (first match wins):
+#   1. <cwd-override> argument
+#   2. HANDOFF_CWD environment variable
+#   3. "default_cwd" in <skill-dir>/settings.json
+#   4. "default_cwd" in <skill-dir>/settings.example.json
+#   5. caller's $(pwd)
+# Leading "~" in the resolved path is expanded to $HOME.
 set -euo pipefail
 
 file="${1:-}"
+cwd_override="${2:-}"
 if [[ -z "$file" || ! -f "$file" ]]; then
-  echo "usage: spawn.sh <prompt-file>" >&2
+  echo "usage: spawn.sh <prompt-file> [<cwd-override>]" >&2
   exit 1
 fi
+
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+
+read_default_cwd() {
+  local f="$1"
+  [[ -f "$f" ]] || return 1
+  sed -n 's/.*"default_cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -n1
+}
+
+resolve_cwd() {
+  local v=""
+  if [[ -n "$cwd_override" ]]; then
+    v="$cwd_override"
+  elif [[ -n "${HANDOFF_CWD:-}" ]]; then
+    v="$HANDOFF_CWD"
+  else
+    v="$(read_default_cwd "$SKILL_DIR/settings.json" || true)"
+    [[ -z "$v" ]] && v="$(read_default_cwd "$SKILL_DIR/settings.example.json" || true)"
+  fi
+  [[ -z "$v" ]] && v="$(pwd)"
+  # Quote ~ in parameter expansion to suppress bash's tilde expansion on the pattern.
+  if [[ "$v" == "~" ]]; then
+    v="$HOME"
+  elif [[ "$v" == "~/"* ]]; then
+    v="$HOME/${v#"~/"}"
+  fi
+  echo "$v"
+}
 
 CLAUDE_BIN="$(command -v claude || true)"
 if [[ -z "$CLAUDE_BIN" ]]; then
@@ -31,7 +68,11 @@ for _ in 1 2 3 4 5; do
   pid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ' || true)
 done
 
-CWD="$(pwd)"
+CWD="$(resolve_cwd)"
+if [[ ! -d "$CWD" ]]; then
+  echo "handoff: resolved cwd does not exist: $CWD" >&2
+  exit 1
+fi
 
 # iTerm2's `split vertically with default profile command "..."` execs the command
 # directly without a shell, so compound commands (cd, &&, ;, |) need /bin/bash -c

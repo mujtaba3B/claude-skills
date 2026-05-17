@@ -14,9 +14,10 @@ Package up the work in this session as a self-contained prompt, then either spaw
 The user invokes as `/handoff [<args>]`. Args can include:
 
 - The `--copy` flag, anywhere in args. Destination becomes clipboard. Without `--copy`, destination is "spawn a fresh Claude in a new vertical iTerm2 split".
-- Free text, anything other than `--copy`. That free text is the sidequest topic, and the handoff prompt is scoped to that topic. Without free text, the handoff covers the full current session.
+- The `--cwd <path>` flag, anywhere in args. Overrides the working directory the spawned pane lands in for this invocation only. Tilde (`~`) is allowed. Ignored when `--copy` is set.
+- Free text, anything other than the recognized flags. That free text is the sidequest topic, and the handoff prompt is scoped to that topic. Without free text, the handoff covers the full current session.
 
-Scan args. Strip `--copy` if present (note the destination). Whatever remains, joined back into a single string, is the topic (may be empty).
+Scan args. Strip `--copy` and `--cwd <path>` if present (note them). Whatever remains, joined back into a single string, is the topic (may be empty).
 
 Examples:
 
@@ -25,6 +26,9 @@ Examples:
 - `/handoff fix the way we think about spec organization` -> spawn split, scoped to "fix the way we think about spec organization".
 - `/handoff --copy explain the migration risk` -> clipboard, scoped to "explain the migration risk".
 - `/handoff investigate flaky auth test --copy` -> same as `/handoff --copy investigate flaky auth test`.
+- `/handoff --cwd ~/dev/businesses/hesco rework the spec` -> spawn split in `~/dev/businesses/hesco`, scoped to "rework the spec".
+
+Default working directory for spawned panes comes from `skills/handoff/settings.json` (gitignored, user-local) with `settings.example.json` as the committed fallback. See "Settings" below.
 
 Do NOT use `AskUserQuestion` to confirm the destination or scope. The args are the answer. If args are genuinely ambiguous (rare), bias toward the inferred mode and mention it in the final confirmation so the user can rerun if wrong.
 
@@ -94,7 +98,9 @@ TMPFILE=$(mktemp /tmp/handoff-prompt.XXXXXX)
 cat > "$TMPFILE" <<'EOF'
 <the handoff prompt>
 EOF
-~/.claude/skills/handoff/spawn.sh "$TMPFILE"
+# Pass <cwd-override> as a second arg ONLY when the user provided --cwd.
+# Otherwise omit it and let spawn.sh resolve via settings.json / settings.example.json.
+~/.claude/skills/handoff/spawn.sh "$TMPFILE" [<cwd-override>]
 ```
 
 The helper script handles iTerm2 AppleScript split-and-launch: it reads the prompt from the file, captures the invoking iTerm session, splits it vertically, and launches `claude "<prompt>"` as the new session's startup command (no `write text` race). It also inherits `--dangerously-skip-permissions` if any ancestor process has it (so a YOLO-mode parent spawns YOLO-mode children).
@@ -114,3 +120,21 @@ One short line. Pick the right variant:
 - Spawn, sidequest: `Spawned fresh Claude in new iTerm pane, scoped to: <topic>. Main quest is still here.`
 
 Do not print the full prompt back to the user. They have it on the clipboard or in the new pane; reprinting is clutter.
+
+---
+
+## Settings
+
+User-tunable defaults live in `skills/handoff/settings.json`, which is gitignored. A committed `settings.example.json` ships with the skill defaults so a fresh checkout still works.
+
+Schema:
+
+```json
+{
+  "default_cwd": "~"
+}
+```
+
+- `default_cwd`: working directory the spawned pane lands in when the user does not pass `--cwd`. Tilde (`~`) is expanded to `$HOME`. Example default ships as `~`; users typically override to `~/dev` or a specific project root.
+
+Resolution order in `spawn.sh` (first match wins): `--cwd` flag, then `HANDOFF_CWD` env var, then `settings.json`, then `settings.example.json`, then the caller's `$(pwd)`.
