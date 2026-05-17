@@ -8,6 +8,9 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-17
 
+### `[meta][release]` v2026.05.17.2 shipped: `/expert-review` removed
+https://github.com/mujtaba3B/claude-skills/releases/tag/v2026.05.17.2
+
 ### `[skill][expert-review]` Dropped the deprecated `/expert-review` alias
 The `/expert-review` shim existed to preserve slash-command muscle memory after the skill was merged into `/second-opinion panel`. One day of carrying it was enough: the v2026.05.17 release notes already called out the rename prominently, and keeping a dead-end skill around adds noise to the skill list Claude scans every session. Removed the directory and the INDEX entry; muscle memory now retrains the natural way (typing `/expert` autocompletes to nothing, prompting the user to learn `/second-opinion`). Pushed directly to `main` (bypassed PR rule via admin, branch-protection requires 0 approving reviews).
 
