@@ -8,6 +8,18 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-17
 
+### `[skill][distill]` Two fixes after a bad write: in-process re-entrancy + per-repo CLAUDE.md scan
+Dogfooded `/distill-question-and-answer-log-to-principles` inside `/close-out` and it produced a memory file (`question_and_answer_decision_claude_skills_versioning.md`) saying SemVer-with-new-skill-as-major. The repo `CLAUDE.md` had been updated earlier the same day to adopt CalVer instead (see the `[meta][release]` CalVer entry below). The bad write happened because Step 1 of the distill skill only loaded `~/.claude/CLAUDE.md` and `~/dev/CLAUDE.md`, not the per-repo `CLAUDE.md` of the pending entry's `cwd`. Per-repo schema is exactly where decisions made AFTER a Q+A often live; missing it produced a stale "principle" that contradicted shipped convention.
+
+A second bug surfaced during the same run: the skill's own approval `AskUserQuestion` was captured back into the pending log because the `Q_AND_A_HOOK_DISABLE=1` env-var guard only covers subprocess re-entrancy (which this is not . the distill skill IS the parent Claude process asking the question in-process).
+
+Fixes:
+1. Skill Step 1 now loads each unique pending-entry `cwd`'s nearest `CLAUDE.md` (walking up to `~/dev/`) as an additional higher-tier source.
+2. Skill Step 3 now requires `header: "Distill"` on its approval questions. Capture hook (`~/.claude/scripts/question-and-answer-capture.sh`) was updated to skip any AskUserQuestion carrying that reserved sentinel header. The hook still honors the env-var guard for subprocess scenarios; these are layered, not alternatives.
+3. Anti-patterns 8 and 9 added so a future model invoking the skill notices both contracts.
+
+Rolled back the bad memory write (deleted file, removed MEMORY.md index line, flipped JSONL entry from approved to rejected with reason "conflicts with higher tier: repo CLAUDE.md adopted CalVer after this Q+A"). The hook change to `~/.claude/scripts/` is not in this repo (not version-controlled); recorded here for traceability.
+
 ### `[meta][release]` v2026.05.17.2 shipped: `/expert-review` removed
 https://github.com/mujtaba3B/claude-skills/releases/tag/v2026.05.17.2
 

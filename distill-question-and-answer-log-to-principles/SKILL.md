@@ -11,7 +11,7 @@ A PostToolUse hook (`~/.claude/scripts/question-and-answer-capture.sh`) records 
 
 - **Pending log:** `~/.claude/projects/-Users-mujtaba-dev/memory/.question-and-answer-pending.jsonl`. Each line is one capture: `{ts, session_id, cwd, tool, question_payload, response, context, status}`.
 - **Existing memory:** every `*.md` in `~/.claude/projects/-Users-mujtaba-dev/memory/`. Read them so reinforcement and contradiction detection works.
-- **Higher-tier sources:** `~/.claude/CLAUDE.md` and `~/dev/CLAUDE.md`. These outrank memory; never auto-write a `question_and_answer_decision_*.md` that contradicts them.
+- **Higher-tier sources:** `~/.claude/CLAUDE.md`, `~/dev/CLAUDE.md`, AND the per-repo `CLAUDE.md` of every pending entry's `cwd` (walk up from the cwd until you find one or hit `~/dev/`). All of these outrank memory; never auto-write a `question_and_answer_decision_*.md` that contradicts them. A per-repo CLAUDE.md frequently encodes a decision that was made AFTER the Q+A was captured and supersedes it; missing this step leads to writing stale principles.
 
 ## Conflict hierarchy (HARD RULE)
 
@@ -32,6 +32,7 @@ Otherwise read in one parallel bash batch:
 - The full `.question-and-answer-pending.jsonl`.
 - `MEMORY.md` and every `*.md` in the memory dir.
 - `~/.claude/CLAUDE.md` and `~/dev/CLAUDE.md`.
+- For each unique `cwd` across pending entries: the nearest `CLAUDE.md` (walk up from cwd toward `~/dev/`, read the first one found). These per-repo schema files often record decisions that supersede earlier Q+A captures.
 
 Filter the JSONL to entries with `status == "pending"` only. If zero pending, end with: "No pending Q+A entries. Nothing to distill." Skip the rest.
 
@@ -74,7 +75,7 @@ MEMORY.md addition:
 
 For `conflict-higher-tier`, also show the conflicting source path + the quoted contradicting line.
 
-Then use `AskUserQuestion` with options: **Approve**, **Reject**, **Defer**, **Edit** (let me revise this proposal). Wait for the answer before moving to the next entry. The user's CLAUDE.md prefers one question at a time; respect that.
+Then use `AskUserQuestion` with options: **Approve**, **Reject**, **Defer**, **Edit** (let me revise this proposal). **Set `header` to the exact string `"Distill"`** . this is a reserved sentinel that the capture hook (`~/.claude/scripts/question-and-answer-capture.sh`) recognizes and skips, so the distill skill's own approval questions do not get re-captured back into the pending log (in-process re-entrancy guard; the `Q_AND_A_HOOK_DISABLE=1` env-var guard only covers subprocess re-entrancy). Wait for the answer before moving to the next entry. The user's CLAUDE.md prefers one question at a time; respect that.
 
 Auto-mark "ignore" entries as rejected silently without asking, but show a short list of them in the final summary so the user can object if any was misclassified.
 
@@ -137,3 +138,5 @@ If conflicts were surfaced and unresolved, list them by ts so the user can revis
 5. **Per-line appends to a partially-updated JSONL.** Full rewrite under a tempfile + rename. The file is small.
 6. **Preserving entries forever.** Old approved/rejected lines past 30 days are purged.
 7. **Using em-dashes anywhere in proposals or summaries.** Per the user's global rule.
+8. **Forgetting to scan per-repo `CLAUDE.md` files in Step 1.** Per-repo schema files frequently encode decisions made AFTER a Q+A was captured (e.g., a versioning scheme chosen later in the day). Skipping them produces stale "principles" that contradict shipped conventions. Always walk up from each pending entry's `cwd` to find the nearest repo `CLAUDE.md`.
+9. **Using any AskUserQuestion `header` other than `"Distill"` in Step 3.** That header is the in-process re-entrancy sentinel; deviating means the hook will capture the skill's own approval questions.
