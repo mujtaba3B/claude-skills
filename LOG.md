@@ -8,6 +8,9 @@ Format: date-headed sections, topic-tagged entries. One line per decision; expan
 
 ## 2026-05-17
 
+### `[skill][close-out]` Added Step 0 roadmap with live status markers
+Need: user wanted a visible checklist when `/close-out` runs so they can follow the major steps without scrubbing the output. Added Step 0 that prints a fixed 6-line roadmap up front using `⏳ / 🔄 / ✅ / ⏭️` markers, updates as steps complete, and reprints the final state in Step 6. Conditional steps (Pencil sweep, Q+A distill) get marked `⏭️` with a reason the moment they confirm-skip during inventory, not at the end. Same shape every run.
+
 ### `[meta][release]` v2026.05.17 shipped: first CalVer release with `/second-opinion` and `/distill-question-and-answer-log-to-principles`
 First tagged release of the repo. Establishes the CalVer convention going forward. Notes call out the `/expert-review` → `/second-opinion panel` alias and the new four-mode shape so muscle memory carries over. Release URL: https://github.com/mujtaba3B/claude-skills/releases/tag/v2026.05.17.
 

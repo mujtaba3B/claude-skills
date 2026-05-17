@@ -20,6 +20,37 @@ The convention only pays off if the files stay current. This skill is the discip
 
 **Default mode is fast and parallel. Apply first, summarize at the end.** Do NOT preview each drafted entry and ask for approval. The user explicitly chose speed over per-entry review (see the `close-out-no-preview` feedback memory). The summary is where the user reviews; if they want changes, iterate then.
 
+### Step 0: Print the run roadmap
+
+Before doing anything else, print a fixed 6-line roadmap so the user can follow the run. Mark each step with a status indicator that updates as work progresses:
+
+- `⏳` pending
+- `🔄` in-progress
+- `✅` done
+- `⏭️` skipped (with reason inline)
+
+Initial print:
+
+```
+Close-out plan:
+- ⏳ 1. Inventory (git, memory dir, Q+A log, branch protection)
+- ⏳ 2. Decide and apply edits (LOG / INDEX / CLAUDE / memory / README)
+- ⏳ 3. Push and PR (direct push or open PR depending on branch protection)
+- ⏳ 4. Pencil sweep (only if .pen was edited and a deploy happened)
+- ⏳ 5. Distill Q+A pending log (only if pending entries exist)
+- ⏳ 6. Summary
+```
+
+As each step completes, print a one-liner like `✅ Step N done. <one-line outcome>` and continue. Do not reprint the full roadmap between every step; the running output reconstructs progress.
+
+When a conditional step (4 or 5) is going to skip, mark it as `⏭️` with the reason at the moment you confirm the skip (during or right after Step 1), not later. Example: after inventory, if there were no `.pen` edits this session, immediately note `⏭️ Step 4 skipped: no .pen edits`.
+
+For Step 6, reprint the full roadmap with final markers so the run ends with a clear "here is everything that happened" view, then add the one-line summary.
+
+This roadmap is the user's read on what is about to happen and what is in flight. Keep it accurate and lightweight; do not embellish it with sub-bullets or commentary.
+
+---
+
 ### Step 1: Inventory in one parallel bash call
 
 Run a single bash invocation that gets everything you need:
@@ -82,11 +113,23 @@ Do not try to distill inline here; the dedicated skill knows the contract.
 
 ### Step 6: One-line summary
 
-End with one or two lines like:
+Reprint the full roadmap with final markers, then end with one or two lines like:
 
 > Closed out. Updated LOG.md (3 entries across 2 repos), saved 1 memory, distilled 4 pending Q+A (2 approved). PR opened on public-claude-skills (link). CLAUDE / INDEX / README unchanged. No Pencil sweep.
 
-Do not print a long recap; the user already saw the inventory and can read `git log`.
+Final roadmap reprint should look like:
+
+```
+Close-out plan:
+- ✅ 1. Inventory (3 repos, 4 touched files, no Q+A pending)
+- ✅ 2. Decide and apply edits (LOG x3, memory x1)
+- ✅ 3. Push and PR (PR #4 opened on public-claude-skills)
+- ⏭️ 4. Pencil sweep (no .pen edits this session)
+- ⏭️ 5. Distill Q+A (no pending entries)
+- ✅ 6. Summary
+```
+
+Do not print a long recap beyond this; the user saw the inventory and can read `git log`.
 
 ## When to actually ask a question
 
