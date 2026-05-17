@@ -39,6 +39,7 @@ Close-out plan:
 - ⏳ 4. Pencil sweep (only if .pen was edited and a deploy happened)
 - ⏳ 5. Distill Q+A pending log (only if pending entries exist)
 - ⏳ 5.5. Agent files architect (only if TTL/session/activity trigger fires)
+- ⏳ 5.7. Cleanup stale branches and return to main (per touched repo)
 - ⏳ 6. Summary
 ```
 
@@ -120,6 +121,29 @@ When fired, the architect runs up-walk only (no `--deep`, `--research`, or `--re
 
 Do not duplicate the gate logic here; the architect owns it.
 
+### Step 5.7: Cleanup stale branches and return to main
+
+For each repo touched in this session (plus the cwd repo), run:
+
+```bash
+~/.claude/skills/close-out/cleanup-branches.sh <repo-path>
+```
+
+What it does (read the script for the authoritative behavior):
+
+- `git fetch --prune origin` so "merged into origin/main" reflects what GitHub actually has.
+- Lists local branches reachable from `origin/<base>` (base auto-detected via `origin/HEAD`, fallback `main` then `master`).
+- If the current branch is among them, switches to base first (and `git pull --ff-only`).
+- Deletes each merged branch with `git branch -D` (safe because merged-into-base was already verified).
+- Skips the current branch when the working tree is dirty or has unpushed commits; cleans the rest.
+- Never pushes branch deletions to a remote. PR auto-delete on GitHub handles that side.
+- Honors `PROTECT_BRANCHES=a,b` env var for extra never-delete branches.
+- `CLEANUP_DRY_RUN=1` previews without changing anything.
+
+Run it per touched repo. Surface counts in the summary (e.g., "cleaned 3 branches in mutwo, 0 in user_growth"). If the script prints `KEPT-current ...`, mention which branch and why so the user knows to commit/push before next close-out.
+
+Tests for this helper live in `~/.claude/skills/close-out/test_cleanup_branches.sh`. Run them when modifying the helper.
+
 ### Step 6: One-line summary
 
 Reprint the full roadmap with final markers, then end with one or two lines like:
@@ -136,6 +160,7 @@ Close-out plan:
 - ⏭️ 4. Pencil sweep (no .pen edits this session)
 - ⏭️ 5. Distill Q+A (no pending entries)
 - ⏭️ 5.5. Agent files architect (no trigger)
+- ✅ 5.7. Cleanup stale branches (deleted 2 in mutwo, 0 elsewhere; now on main)
 - ✅ 6. Summary
 ```
 
