@@ -12,7 +12,7 @@ Two kinds of upgrades to a standard Claude Code install live here:
 - **Skills**: slash commands and agent personas Claude Code auto-loads (e.g. `/handoff`, `/second-opinion`).
 - **Harness mods**: scripts and `~/.claude/settings.json` modifications that change how Claude Code itself behaves (e.g. a tab-color indicator that tells you which session needs your attention).
 
-Both install with the same `install.sh`. Skills go in `skills/`, harness mods in `harness/`. See [`MODS.md`](MODS.md) for the full catalog.
+Both install with the same `install.sh`. Skills go in `skills/`, harness mods in `harness/`.
 
 The name comes from my personal AI alias ("Mewtwo", second Mujtaba); the repo gets the spelling `mutwo`.
 
@@ -36,10 +36,14 @@ Restart your Claude Code session afterward so it picks up the new skills and hoo
 
 ## What's in here
 
-See [`MODS.md`](MODS.md) for the full scannable table. Short list:
-
-- **Skills**: `/handoff`, `/close-out`, `/second-opinion`, `/distill-question-and-answer-log-to-principles`, `/agent-files-architect`
-- **Harness**: `tab-state-indicator` (iTerm2 tab color + status-line summary)
+| Name | Type | What it does | Install |
+|------|------|--------------|---------|
+| [agent-files-architect](skills/agent-files-architect/) | Skill | Audits and selectively improves `CLAUDE.md` / `AGENTS.md` / `LOG.md` / `INDEX.md` / `MEMORY.md`. Produces a precedence graph, stale-pointer scan, gap list. | `./install.sh skills` |
+| [close-out](skills/close-out/) | Skill | End-of-session housekeeping. Walks project docs and persistent memory to apply this session's decisions and durable knowledge. | `./install.sh skills` |
+| [distill-question-and-answer-log-to-principles](skills/distill-question-and-answer-log-to-principles/) | Skill | Reviews pending `AskUserQuestion` captures and distills recurring patterns into `question_and_answer_decision` memory entries. | `./install.sh skills` |
+| [handoff](skills/handoff/) | Skill | Hands off the current work to a fresh Claude session (vertical iTerm2 split) or copies a self-contained handoff prompt to the clipboard. | `./install.sh skills` |
+| [second-opinion](skills/second-opinion/) | Skill | Four modes: get a second opinion from Claude, Codex, Gemini, or a panel of all three in parallel. | `./install.sh skills` |
+| [tab-state-indicator](harness/tab-state-indicator/) | Harness | Turns each Claude Code iTerm2 tab green when working and red when waiting on you. Plus a status-line summary of the last assistant message. | `cd harness/tab-state-indicator && ./install.sh` |
 
 ## Updating
 
