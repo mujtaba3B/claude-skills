@@ -31,22 +31,29 @@ for _ in 1 2 3 4 5; do
   pid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ' || true)
 done
 
-PROMPT="$(cat "$file")"
 CWD="$(pwd)"
 
 # iTerm2's `split vertically with default profile command "..."` execs the command
 # directly without a shell, so compound commands (cd, &&, ;, |) need /bin/bash -c
 # wrapping or the new pane closes instantly.
-CWD="$CWD" PROMPT="$PROMPT" CLAUDE_BIN="$CLAUDE_BIN" CLAUDE_EXTRA_ARGS="$CLAUDE_EXTRA_ARGS" osascript <<'APPLESCRIPT'
+#
+# Pass the prompt-file PATH through to AppleScript (not the contents) because
+# macOS `system attribute` truncates multi-line env vars at the first newline.
+# The receiving bash command reads the file at exec time via "$(cat -- ...)"
+# so multi-line prompts and shell metacharacters survive intact. The outer
+# double-quotes around $(cat ...) make it a single argv to claude; command
+# substitution output is not subject to word splitting or glob expansion
+# when quoted. The `--` guards against prompt-file paths that begin with `-`.
+CWD="$CWD" PROMPT_FILE="$file" CLAUDE_BIN="$CLAUDE_BIN" CLAUDE_EXTRA_ARGS="$CLAUDE_EXTRA_ARGS" osascript <<'APPLESCRIPT'
 set cwd to system attribute "CWD"
-set userPrompt to system attribute "PROMPT"
+set promptFile to system attribute "PROMPT_FILE"
 set claudeBin to system attribute "CLAUDE_BIN"
 set claudeExtraArgs to system attribute "CLAUDE_EXTRA_ARGS"
 set innerCmd to "cd " & quoted form of cwd & " && exec " & quoted form of claudeBin
 if claudeExtraArgs is not "" then
   set innerCmd to innerCmd & " " & claudeExtraArgs
 end if
-set innerCmd to innerCmd & " " & quoted form of userPrompt
+set innerCmd to innerCmd & " \"$(cat -- " & quoted form of promptFile & ")\""
 tell application "iTerm"
   tell current window
     set invokingSession to current session
