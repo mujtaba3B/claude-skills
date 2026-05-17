@@ -55,6 +55,11 @@ NEW_SETTINGS=$(jq \
     | .hooks.PostToolUse     = (((.hooks.PostToolUse     // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $working_cmd}]}])
     | .hooks.Stop            = (((.hooks.Stop            // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
     | .hooks.Notification    = (((.hooks.Notification    // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
+    # AskUserQuestion notifications: fire idle on PreToolUse for that tool only,
+    # so the user gets a banner showing the question itself the moment Claude
+    # invokes it. Notification-hook does not fire for AskUserQuestion in
+    # current Claude Code, so this is the only path that catches AUQ.
+    | .hooks.PreToolUse      = (((.hooks.PreToolUse      // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "AskUserQuestion", hooks: [{type: "command", command: $idle_cmd}]}])
     | (if (.statusLine.command // "") == $status_cmd then del(.statusLine) else . end)
     # Suppress Claude Code native banner so the custom osascript notification
     # is the only one. Only set if unset, to respect existing user preference.

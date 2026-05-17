@@ -20,6 +20,16 @@ TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/nul
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 HOOK_EVENT=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
 HOOK_MESSAGE=$(printf '%s' "$INPUT" | jq -r '.message // empty' 2>/dev/null)
+TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+
+# AskUserQuestion-specific: extract the first question text so the notification
+# body can show what's being asked. PreToolUse on the AskUserQuestion matcher
+# fires before the question dialog blocks the model, which is when we want to
+# notify the user.
+QUESTION_TEXT=""
+if [ "$HOOK_EVENT" = "PreToolUse" ] && [ "$TOOL_NAME" = "AskUserQuestion" ]; then
+  QUESTION_TEXT=$(printf '%s' "$INPUT" | jq -r '.tool_input.questions[0].question // empty' 2>/dev/null)
+fi
 
 if [ -z "$SESSION_ID" ]; then
   SESSION_ID="unknown-$$"
@@ -96,19 +106,26 @@ cat > "$STATE_FILE" <<EOF
 {"state":"$STATE","emoji":"$EMOJI","summary":$(printf '%s' "$SUMMARY" | jq -Rs .),"updated_at":"$(date -u +%FT%TZ)"}
 EOF
 
-# macOS notification when state flips to red (idle).
-# For Notification-hook events (mid-turn permission prompts), Claude Code passes
-# a `message` field describing what's pending; prefer that over the transcript
-# text, which would otherwise show pre-tool-call context the user can't act on.
+# macOS notification when state flips to red (idle). Body and title vary by
+# hook event so the user sees the most useful copy for each case:
+#   PreToolUse + AskUserQuestion -> the question itself
+#   Notification (permission prompts) -> Claude Code's own message field
+#   Stop (turn end) -> last assistant text from transcript
 if [ "$STATE" = "idle" ]; then
-  if [ "$HOOK_EVENT" = "Notification" ] && [ -n "$HOOK_MESSAGE" ]; then
+  if [ -n "$QUESTION_TEXT" ]; then
+    NOTIF_TITLE="❓ Claude needs an answer"
+    NOTIF_BODY="$QUESTION_TEXT"
+  elif [ "$HOOK_EVENT" = "Notification" ] && [ -n "$HOOK_MESSAGE" ]; then
+    NOTIF_TITLE="🔴 Claude has stopped working"
     NOTIF_BODY="$HOOK_MESSAGE"
   else
+    NOTIF_TITLE="🔴 Claude has stopped working"
     NOTIF_BODY="${SUMMARY:-waiting on you}"
   fi
   esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
   BODY_ESC=$(esc "$NOTIF_BODY")
-  osascript -e "display notification \"$BODY_ESC\" with title \"🔴 Claude has stopped working\" sound name \"Pop\"" >/dev/null 2>&1 || true
+  TITLE_ESC=$(esc "$NOTIF_TITLE")
+  osascript -e "display notification \"$BODY_ESC\" with title \"$TITLE_ESC\" sound name \"Pop\"" >/dev/null 2>&1 || true
 fi
 
 # Emit iTerm2 escapes if we have a tty.

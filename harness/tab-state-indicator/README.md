@@ -3,7 +3,10 @@
 Turns each Claude Code iTerm2 tab a different color based on what the session is doing, so you can tell at a glance which one needs you across multiple parallel sessions.
 
 - 🟢 **Working**: tab tinted green. Claude is processing your input or running tools.
-- 🔴 **Needs you**: tab tinted red, a 🟢/🔴 badge in the top-right of the pane, AND a macOS notification fires (`🔴 Claude has stopped working`, body = the last assistant message or the pending permission-prompt text).
+- 🔴 **Needs you**: tab tinted red, a 🟢/🔴 badge in the top-right of the pane, AND a macOS notification fires. Title and body adapt to what's pending:
+  - `🔴 Claude has stopped working` + last assistant message (turn-end)
+  - `🔴 Claude has stopped working` + Claude Code's prompt text (permission prompts)
+  - `❓ Claude needs an answer` + the question itself (when Claude invokes `AskUserQuestion`)
 
 ## Requirements
 
@@ -39,7 +42,7 @@ Removes only the hook entries it owns (identified by the sentinel `mutwo:tab-sta
 
 ## How it works
 
-- Four hooks: `UserPromptSubmit` and `PostToolUse` flip state to working (green); `Stop` and `Notification` flip state to idle (red).
+- Five hooks: `UserPromptSubmit` and `PostToolUse` flip state to working (green); `Stop` and `Notification` flip state to idle (red); `PreToolUse` with matcher `AskUserQuestion` also flips to idle so the question itself shows in the notification.
 - Each hook runs a small shell script that walks up the process tree to find the iTerm2 pty, then writes iTerm2 escape sequences (`OSC 6` for tab color, `OSC 1337;SetBadgeFormat` for the badge) directly to that pty.
 - On idle, the same script fires a macOS notification via `osascript`. Body is pulled from the hook input's `message` field for `Notification`-hook events (mid-turn permission prompts) or from the last assistant text in the transcript for `Stop`-hook events.
 - The installer also sets `preferredNotifChannel: "notifications_disabled"` so Claude Code's own native banner does not duplicate the custom one. Re-installing on an older version that set a `statusLine` will clear that stale entry.
