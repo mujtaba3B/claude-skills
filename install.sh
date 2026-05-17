@@ -2,8 +2,7 @@
 # Symlink every skill in this repo into ~/.claude/skills/ so Claude Code
 # discovers them. Idempotent: re-run after pulling updates.
 #
-# Each top-level directory containing a SKILL.md is treated as a skill.
-# Directories like .git/ are skipped.
+# Each directory under skills/ containing a SKILL.md is treated as a skill.
 
 set -euo pipefail
 
@@ -12,7 +11,7 @@ TARGET="$HOME/.claude/skills"
 mkdir -p "$TARGET"
 
 # Forward-link skills.
-for skill in "$REPO"/*/; do
+for skill in "$REPO"/skills/*/; do
   [[ -f "$skill/SKILL.md" ]] || continue
   name="$(basename "$skill")"
   link="$TARGET/$name"

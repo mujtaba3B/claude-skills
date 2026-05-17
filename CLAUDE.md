@@ -1,6 +1,6 @@
-# claude-skills . Project Schema (Claude instructions)
+# mutwo . Project Schema (Claude instructions)
 
-This file is the schema for the `claude-skills` repo. It applies to every Claude Code session started under `/Users/mujtaba/dev/public-claude-skills/`.
+This file is the schema for the `mutwo` repo. It applies to every Claude Code session started under `/Users/mujtaba/dev/mutwo/` (and `/Users/mujtaba/dev/public-claude-skills/` during the in-progress rename).
 
 The pattern follows the cross-project schema at `/Users/mujtaba/dev/CLAUDE.md`.
 
@@ -8,33 +8,44 @@ The pattern follows the cross-project schema at `/Users/mujtaba/dev/CLAUDE.md`.
 
 ## What this repo is
 
-A small public collection of standalone Claude Code skills. Each top-level directory is one skill (a `SKILL.md` with YAML frontmatter); there is no plugin manifest, no marketplace, no shared context files between skills.
+A public collection of two kinds of things you can install on top of Claude Code:
 
-Local folder is `~/dev/public-claude-skills/`; public GitHub repo is `mujtaba3B/claude-skills`. The folder-name and repo-name differ on purpose: locally the "public-" prefix signals "publishable, safe to share"; publicly the simpler name reads cleanly.
+1. **Skills** (`skills/<name>/SKILL.md`): standalone slash commands and agent personas. Auto-loaded by Claude Code once symlinked into `~/.claude/skills/`.
+2. **Harness mods** (`harness/<name>/`): scripts and `~/.claude/settings.json` modifications that change how Claude Code itself behaves (hooks, status line, etc.). Each mod has its own `install.sh` that backs up settings.json, validates JSON, and merges in. Tagged with a sentinel `matcher` value (`mutwo:<mod>`) so uninstall is location-independent.
 
-The repo is intentionally flat. No `skills/` subdirectory: the repo *is* skills. A future restructure to add `lib/` or `docs/` would justify nesting; until then, don't pre-build scaffolding.
+Mewtwo is the personal alias the maintainer uses for AI tooling; the repo carries the name.
+
+Local folder is `~/dev/mutwo/`; public GitHub repo is `mujtaba3B/mutwo`.
 
 ---
 
 ## Repo layout
 
 ```
-~/dev/public-claude-skills/
-. CLAUDE.md          . this file
-. README.md          . public-facing install + usage
-. install.sh         . symlinks every <skill>/ into ~/.claude/skills/
-. handoff/
-    . SKILL.md
-    . spawn.sh       . optional skill-local helper script
-. <next-skill>/
-    . SKILL.md
-. LOG.md             . local-only working log (gitignored)
-. INDEX.md           . local-only working catalog (gitignored)
+~/dev/mutwo/
+. CLAUDE.md            . this file (project schema)
+. README.md            . public-facing install + usage
+. MODS.md              . scannable table of everything in the repo
+. install.sh           . interactive picker; calls per-mod installers
+. skills/              . each subdir is one skill with SKILL.md
+    . handoff/
+        . SKILL.md
+        . spawn.sh     . optional skill-local helper
+    . <next-skill>/
+        . SKILL.md
+. harness/             . each subdir is one harness mod
+    . tab-state-indicator/
+        . README.md
+        . install.sh   . idempotent; validates + backs up settings.json
+        . uninstall.sh . removes by sentinel matcher
+        . scripts/     . shell scripts copied into ~/.claude/scripts/
+. LOG.md               . local-only working log (gitignored)
+. INDEX.md             . local-only working catalog (gitignored)
 ```
 
-`LOG.md` and `INDEX.md` are kept by the maintainer locally and are not published. They are listed last because they do not ship with the repo. Anything in them is for the maintainer's own continuity, not for consumers of the repo.
+`LOG.md` and `INDEX.md` are kept by the maintainer locally and are not published.
 
-A directory is a skill iff it contains a `SKILL.md`. `install.sh` skips anything else (so adding a `docs/` folder later wouldn't break install).
+A directory is a skill iff `skills/<name>/SKILL.md` exists. A directory is a harness mod iff `harness/<name>/install.sh` exists.
 
 ---
 
