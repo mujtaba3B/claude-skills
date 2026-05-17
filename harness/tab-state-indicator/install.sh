@@ -55,7 +55,10 @@ NEW_SETTINGS=$(jq \
     | .hooks.PostToolUse     = (((.hooks.PostToolUse     // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $working_cmd}]}])
     | .hooks.Stop            = (((.hooks.Stop            // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
     | .hooks.Notification    = (((.hooks.Notification    // []) | map(select((.hooks // []) | map(.command // "") | any(contains($sentinel)) | not))) + [{matcher: "", hooks: [{type: "command", command: $idle_cmd}]}])
-    | .statusLine = {type: "command", command: $status_cmd}
+    | (if (.statusLine.command // "") == $status_cmd then del(.statusLine) else . end)
+    # Suppress Claude Code native banner so the custom osascript notification
+    # is the only one. Only set if unset, to respect existing user preference.
+    | (if has("preferredNotifChannel") | not then .preferredNotifChannel = "notifications_disabled" else . end)
   ' "$SETTINGS")
 
 # --- Diff preview --------------------------------------------------------
@@ -89,13 +92,14 @@ fi
 
 # --- Copy scripts -------------------------------------------------------
 cp "$HERE/scripts/claude-state.sh" "$TARGET_STATE"
-cp "$HERE/scripts/claude-statusline.sh" "$TARGET_STATUS"
-chmod +x "$TARGET_STATE" "$TARGET_STATUS"
+chmod +x "$TARGET_STATE"
+
+# Clean up stale statusline script from older versions, if present.
+rm -f "$TARGET_STATUS"
 
 echo ""
 echo "Installed $MOD_NAME."
 echo "  Scripts:  $TARGET_STATE"
-echo "            $TARGET_STATUS"
 echo "  Settings: $SETTINGS (sentinel: $SENTINEL)"
 echo "  Backup:   $BACKUP"
 echo ""

@@ -43,7 +43,9 @@ NEW_SETTINGS=$(jq \
       )
     | .hooks |= with_entries(select(.value | length > 0))
     # Remove statusLine only if it is still ours.
-    | if (.statusLine.command // "") == $status_path then del(.statusLine) else . end
+    | (if (.statusLine.command // "") == $status_path then del(.statusLine) else . end)
+    # Remove preferredNotifChannel only if it is still the value we set.
+    | (if .preferredNotifChannel == "notifications_disabled" then del(.preferredNotifChannel) else . end)
   ' "$SETTINGS")
 
 TMP_NEW=$(mktemp)

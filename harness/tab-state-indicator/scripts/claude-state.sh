@@ -17,6 +17,9 @@ find "$STATE_DIR" -type f \( -name '*.json' -o -name '*.tty' \) -mtime +30 -dele
 INPUT=$(cat 2>/dev/null || true)
 SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+HOOK_EVENT=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
+HOOK_MESSAGE=$(printf '%s' "$INPUT" | jq -r '.message // empty' 2>/dev/null)
 
 if [ -z "$SESSION_ID" ]; then
   SESSION_ID="unknown-$$"
@@ -54,13 +57,24 @@ if [ -z "$TTY" ]; then
 fi
 
 # Pull the latest assistant text from the transcript for a 1-line summary.
+# Claude Code stores each assistant segment (thinking, tool_use, text) as its
+# own JSONL entry, so we have to walk back until we find one with text content,
+# not just take the most recent assistant entry (which is often a tool_use).
 SUMMARY=""
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-  SUMMARY=$(tail -r "$TRANSCRIPT" 2>/dev/null | head -200 | \
-    jq -rs 'map(select(.type == "assistant")) | .[0].message.content
-            | if type == "array" then
-                map(select(.type == "text")) | .[0].text // empty
-              else . end' 2>/dev/null | \
+  SUMMARY=$(tail -r "$TRANSCRIPT" 2>/dev/null | head -500 | \
+    jq -rs '
+      map(select(.type == "assistant"))
+      | map(
+          .message.content
+          | if type == "array"
+            then (map(select(.type == "text")) | .[0].text // "")
+            else (. // "")
+            end
+        )
+      | map(select(. != ""))
+      | .[0] // empty
+    ' 2>/dev/null | \
     tr '\n' ' ' | sed 's/  */ /g' | head -c 240)
 fi
 
@@ -81,6 +95,21 @@ esac
 cat > "$STATE_FILE" <<EOF
 {"state":"$STATE","emoji":"$EMOJI","summary":$(printf '%s' "$SUMMARY" | jq -Rs .),"updated_at":"$(date -u +%FT%TZ)"}
 EOF
+
+# macOS notification when state flips to red (idle).
+# For Notification-hook events (mid-turn permission prompts), Claude Code passes
+# a `message` field describing what's pending; prefer that over the transcript
+# text, which would otherwise show pre-tool-call context the user can't act on.
+if [ "$STATE" = "idle" ]; then
+  if [ "$HOOK_EVENT" = "Notification" ] && [ -n "$HOOK_MESSAGE" ]; then
+    NOTIF_BODY="$HOOK_MESSAGE"
+  else
+    NOTIF_BODY="${SUMMARY:-waiting on you}"
+  fi
+  esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+  BODY_ESC=$(esc "$NOTIF_BODY")
+  osascript -e "display notification \"$BODY_ESC\" with title \"🔴 Claude has stopped working\" sound name \"Pop\"" >/dev/null 2>&1 || true
+fi
 
 # Emit iTerm2 escapes if we have a tty.
 if [ -n "$TTY" ] && [ -w "$TTY" ]; then
