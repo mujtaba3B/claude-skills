@@ -23,8 +23,9 @@ The repo is intentionally flat. No `skills/` subdirectory: the repo *is* skills.
 . CLAUDE.md          . this file
 . README.md          . public-facing install + usage
 . install.sh         . symlinks every <skill>/ into ~/.claude/skills/
-. handoff-prompt/
+. handoff/
     . SKILL.md
+    . spawn.sh       . optional skill-local helper script
 . <next-skill>/
     . SKILL.md
 . LOG.md             . local-only working log (gitignored)

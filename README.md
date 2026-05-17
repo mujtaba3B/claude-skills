@@ -20,14 +20,14 @@ cd ~/dev/public-claude-skills
 ./install.sh
 ```
 
-Restart your Claude Code session. The skills become available by their slash-command name (e.g. `/handoff-prompt`).
+Restart your Claude Code session. The skills become available by their slash-command name (e.g. `/handoff`).
 
 ### Install just one
 
 If you only want one, copy the folder directly:
 
 ```sh
-cp -R claude-skills/handoff-prompt ~/.claude/skills/
+cp -R claude-skills/handoff ~/.claude/skills/
 ```
 
 Restart Claude Code.
@@ -36,7 +36,7 @@ Restart Claude Code.
 
 | Skill | Does what |
 |---|---|
-| [`/handoff-prompt`](handoff-prompt/SKILL.md) | Snapshot the current task, decisions, and open questions into a self-contained prompt and copy it to your clipboard. Paste into a fresh Claude Code session to continue without losing context. |
+| [`/handoff`](handoff/SKILL.md) | Hand off the current work to a fresh agent. Default: spawn a new vertical iTerm2 split running a fresh `claude` session with the context preloaded. Add `--copy` to copy a self-contained prompt to the clipboard instead (paste into ChatGPT, Gemini, or any other LLM). Trailing free-text args scope the handoff to a sidequest topic so the main session keeps running. |
 | [`/close-out`](close-out/SKILL.md) | End-of-session housekeeping for projects that keep `CLAUDE.md` / `LOG.md` / `INDEX.md` files at the repo root. Surveys what happened in the session, drafts entries for each schema file, and applies them after you approve. |
 | [`/second-opinion`](second-opinion/SKILL.md) | Get a second opinion from another LLM. Four modes: a single opinion from Claude (subagent), Codex (OpenAI), or Gemini, or a panel of all three in parallel. Returns a concise synthesis instead of raw opinions. Requires `codex` and `gemini` CLIs on `PATH` for those modes. |
 | [`/distill-question-and-answer-log-to-principles`](distill-question-and-answer-log-to-principles/SKILL.md) | Reads a log of past `AskUserQuestion` answers, classifies each one, and proposes new memory entries for you to approve. Goal: stop the same question from being re-asked across sessions. |
