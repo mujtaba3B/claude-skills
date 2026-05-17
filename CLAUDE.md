@@ -21,15 +21,17 @@ The repo is intentionally flat. No `skills/` subdirectory: the repo *is* skills.
 ```
 ~/dev/public-claude-skills/
 . CLAUDE.md          . this file
-. LOG.md             . chronological decision log
-. INDEX.md           . content catalog
 . README.md          . public-facing install + usage
 . install.sh         . symlinks every <skill>/ into ~/.claude/skills/
 . handoff-prompt/
     . SKILL.md
 . <next-skill>/
     . SKILL.md
+. LOG.md             . local-only working log (gitignored)
+. INDEX.md           . local-only working catalog (gitignored)
 ```
+
+`LOG.md` and `INDEX.md` are kept by the maintainer locally and are not published. They are listed last because they do not ship with the repo. Anything in them is for the maintainer's own continuity, not for consumers of the repo.
 
 A directory is a skill iff it contains a `SKILL.md`. `install.sh` skips anything else (so adding a `docs/` folder later wouldn't break install).
 
@@ -43,30 +45,16 @@ A directory is a skill iff it contains a `SKILL.md`. `install.sh` skips anything
 
 ---
 
-## LOG.md . when to update
+## LOG.md and INDEX.md (local-only working files)
 
-Narrative + decision log. Captures *why* and *what was decided*, not every commit.
+Both files are gitignored and exist only on the maintainer's machine. They serve the maintainer's own continuity across sessions, not anyone else.
 
-### Triggers
-- A skill is added, renamed, or deprecated.
-- A skill's architecture or trigger surface changes meaningfully.
-- A repo-wide convention is established or revised.
-- A user preference about how this repo is maintained is captured.
+When working in this repo as Claude, still maintain them per the cross-project schema in `~/dev/CLAUDE.md`. The triggers and format are unchanged:
 
-### Anti-triggers
-- Every commit (git log already has it).
-- Typo fixes inside a skill body.
+- **LOG.md** captures *why* a decision was made (skill added/renamed/deprecated; architecture or trigger-surface change; repo-wide convention established or revised). Format: date-headed `## YYYY-MM-DD` sections; entries `### \`[topic][subtopic]\` Short title`. Skip every-commit noise; `git log` covers that.
+- **INDEX.md** catalogs where artifacts live. Update when a skill is added/renamed/deprecated or a load-bearing external reference is added. Don't catalog every file inside every skill.
 
-### Format
-- Date-headed sections: `## YYYY-MM-DD`.
-- Entries: `### \`[topic][subtopic]\` Short title`, then 1-4 lines of body.
-- Topic tags: `[meta]`, `[skill]`, `[infra]`. Subtopics typically the skill name.
-
----
-
-## INDEX.md . when to update
-
-Update when a skill is added/renamed/deprecated or when a load-bearing external reference is added. Don't catalog every file inside every skill.
+If a file is missing locally (e.g., a fresh clone), create it; nothing breaks.
 
 ---
 
@@ -94,7 +82,7 @@ If the user says yes, run the release workflow below. If no, log the deferral in
    - **Changed**: meaningful updates to existing skills (new modes, restructures).
    - **Removed / renamed**: call these out prominently. Even with a shim, the user-facing slash command may have changed. People scanning the release notes need to know their muscle memory will break.
 3. Create the release with `gh release create v<date> --title 'v<date>' --notes '<notes>' --target main`. Generate the notes via heredoc.
-4. Append a one-line LOG entry under the day's section: `[meta][release] v<date> shipped: <one-line summary>`.
+4. Append a one-line LOG entry under the day's section: `[meta][release] v<date> shipped: <one-line summary>` (local-only file; see the LOG/INDEX section above).
 
 ### What NOT to include in releases
 
@@ -106,4 +94,4 @@ If the user says yes, run the release workflow below. If no, log the deferral in
 
 ## When this file should be updated
 
-If a repo-wide convention changes (new top-level file, new install behavior, new layout), update this file AND log it in LOG.md. Convention drift is the #1 reason schema files become useless.
+If a repo-wide convention changes (new top-level file, new install behavior, new layout), update this file AND log it in LOG.md (local). Convention drift is the #1 reason schema files become useless.
