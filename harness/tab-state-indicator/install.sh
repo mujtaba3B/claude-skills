@@ -63,7 +63,16 @@ NEW_SETTINGS=$(jq \
     | (if (.statusLine.command // "") == $status_cmd then del(.statusLine) else . end)
     # Suppress Claude Code native banner so the custom osascript notification
     # is the only one. Only set if unset, to respect existing user preference.
-    | (if has("preferredNotifChannel") | not then .preferredNotifChannel = "notifications_disabled" else . end)
+    # Track ownership in a .mutwo namespace so uninstall can distinguish
+    # "we set it" from "user already had this value before install".
+    | (
+        if has("preferredNotifChannel") | not
+        then .preferredNotifChannel = "notifications_disabled"
+             | .mutwo //= {}
+             | .mutwo.tab_state_indicator_set_preferred_notif = true
+        else .
+        end
+      )
   ' "$SETTINGS")
 
 # --- Diff preview --------------------------------------------------------

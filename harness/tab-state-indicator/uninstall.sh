@@ -44,8 +44,17 @@ NEW_SETTINGS=$(jq \
     | .hooks |= with_entries(select(.value | length > 0))
     # Remove statusLine only if it is still ours.
     | (if (.statusLine.command // "") == $status_path then del(.statusLine) else . end)
-    # Remove preferredNotifChannel only if it is still the value we set.
-    | (if .preferredNotifChannel == "notifications_disabled" then del(.preferredNotifChannel) else . end)
+    # Remove preferredNotifChannel only if our install marked it. The ownership
+    # flag distinguishes "we set it" from "user had this value before install".
+    | (
+        if (.mutwo.tab_state_indicator_set_preferred_notif // false) == true
+        then del(.preferredNotifChannel)
+             | del(.mutwo.tab_state_indicator_set_preferred_notif)
+        else .
+        end
+      )
+    # Clean up an empty .mutwo namespace so we do not leave {"mutwo": {}} behind.
+    | (if (.mutwo // {}) == {} then del(.mutwo) else . end)
   ' "$SETTINGS")
 
 TMP_NEW=$(mktemp)
