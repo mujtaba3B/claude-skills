@@ -34,7 +34,7 @@ If ALL of the following are true, present a mode-selection menu via `AskUserQues
 - No user flag was passed (`--deep`, `--research`, `--review`, `--tier-discipline` all absent).
 - `--close-out` was not passed.
 
-The menu is a single-select. The four user-facing flags are listed neutrally. `AskUserQuestion` caps options at 4, so the menu offers the recommended baseline plus three add-on modes; combining add-ons (e.g., `--tier-discipline --research`) is available to power users via direct flags only.
+The menu is a single-select. `AskUserQuestion` caps options at 4, so the menu offers four options: the recommended baseline (no flags) plus three flag-enabled add-on modes. Combining add-ons (e.g., `--tier-discipline --research`) is available to power users via direct flags only.
 
 | Option label | Description | Flag set |
 |---|---|---|
@@ -213,8 +213,10 @@ Ask for: per section, emit a finding ONLY if a concrete redirect target exists. 
 - `file` + `section` (the h2/h3 title).
 - `evidence`: the specific 1-2 lines from the section that triggered the assessment, quoted.
 - `target_tier`: one of `claude-md-hard-rule`, `memory`, `skill`, `archive-doc`, `cut`.
-- `redirect_target`: a specific destination. Skill name (existing or proposed), memory file name, or sibling `.md` path. If the LLM cannot name a target, suppress the finding.
-- `what_breaks_if_absent`: one-sentence answer. If the LLM cannot articulate a failure mode, `target_tier` becomes `cut` and the field reads "no concrete failure mode identified".
+- `redirect_target`: a specific destination. Skill name (existing or proposed), memory file name, or sibling `.md` path. For `target_tier: cut`, `redirect_target` is `null` (the redirect IS the deletion). For any other tier, if the LLM cannot name a concrete destination, suppress the finding entirely.
+- `what_breaks_if_absent`: one-sentence answer. If the LLM cannot articulate a failure mode, `target_tier` becomes `cut`, `redirect_target` is `null`, and this field reads "no concrete failure mode identified".
+
+`cut` findings ARE emitted (they are the most useful kind: content the user can delete outright). Findings are only suppressed when the target tier is one of the four positive homes AND no concrete destination can be named.
 
 No `estimated_token_savings` field. The Layer A `bytes` column already conveys current cost; an "estimate" without a drafted rewrite is fake precision (the no-vibes rule).
 
