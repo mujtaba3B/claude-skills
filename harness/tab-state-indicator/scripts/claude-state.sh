@@ -139,16 +139,26 @@ EOF
 # hook event so the user sees the most useful copy for each case:
 #   PreToolUse + AskUserQuestion -> the question itself
 #   Stop (turn end) -> last assistant text (from payload or transcript)
-#   Notification (idle reminder, permission prompt) -> SUPPRESSED. The user
-#     opted out of the "Claude is waiting for your input" banner because it
-#     either fires immediately (noisy) or duplicates the Stop banner. Tab
-#     color and badge still update; only the macOS banner is skipped.
-if [ "$STATE" = "idle" ] && [ "$HOOK_EVENT" != "Notification" ]; then
+#   Notification with "waiting for your input" message -> SUPPRESSED. This is
+#     Claude Code's idle reminder, which duplicates the Stop banner that
+#     already fired. Tab color and badge still update.
+#   Notification with any other message (permission prompts, etc.) -> fires
+#     with the hook's message as the body, so the user knows Claude is
+#     blocked on something actionable.
+IS_IDLE_REMINDER=0
+if [ "$HOOK_EVENT" = "Notification" ] && \
+   printf '%s' "$HOOK_MESSAGE" | grep -qi 'waiting for your input'; then
+  IS_IDLE_REMINDER=1
+fi
+if [ "$STATE" = "idle" ] && [ "$IS_IDLE_REMINDER" = "0" ]; then
   NOTIF_TITLE=""
   NOTIF_BODY=""
   if [ -n "$QUESTION_TEXT" ]; then
     NOTIF_TITLE="❓ Claude needs an answer"
     NOTIF_BODY="$QUESTION_TEXT"
+  elif [ "$HOOK_EVENT" = "Notification" ] && [ -n "$HOOK_MESSAGE" ]; then
+    NOTIF_TITLE="🔴 Claude has stopped working"
+    NOTIF_BODY="$HOOK_MESSAGE"
   else
     NOTIF_TITLE="🔴 Claude has stopped working"
     NOTIF_BODY="${SUMMARY:-waiting on you}"
