@@ -7,6 +7,10 @@ description: Review pending AskUserQuestion captures from the question-and-answe
 
 A PostToolUse hook (`~/.claude/scripts/question-and-answer-capture.sh`) records every `AskUserQuestion` answer as a JSON line in `~/.claude/projects/-Users-mujtaba-dev/memory/.question-and-answer-pending.jsonl`. That log is write-only. This skill turns those raw captures into durable `question_and_answer_decision_*.md` entries in the same memory dir, with the user reviewing every proposed write before it lands.
 
+## Architecture reference
+
+Read `references/ARCHITECTURE.md` before editing capture hooks, memory precedence, re-entrancy guards, or promotion rules. That file is canonical for the full question-and-answer memory loop (hook, conflict hierarchy, reserved AskUserQuestion headers, two-layer re-entrancy guards). `~/.claude/CLAUDE.md` carries only the ambient summary.
+
 ## Inputs
 
 - **Pending log:** `~/.claude/projects/-Users-mujtaba-dev/memory/.question-and-answer-pending.jsonl`. Each line is one capture: `{ts, session_id, cwd, tool, question_payload, response, context, status}`.
