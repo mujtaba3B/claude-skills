@@ -21,6 +21,11 @@ CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 HOOK_EVENT=$(printf '%s' "$INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
 HOOK_MESSAGE=$(printf '%s' "$INPUT" | jq -r '.message // empty' 2>/dev/null)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+# Stop hook payload includes the just-finished assistant turn directly. Prefer
+# this over tailing the transcript file, because the transcript JSONL is not
+# flushed until after the Stop hook returns, so a tail-based read produces the
+# previous turn's text.
+LAST_ASSISTANT=$(printf '%s' "$INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null)
 
 # AskUserQuestion-specific: extract the first question text so the notification
 # body can show what's being asked. PreToolUse on the AskUserQuestion matcher
@@ -66,26 +71,50 @@ if [ -z "$TTY" ]; then
   [ -n "$TTY" ] && echo "$TTY" > "$TTY_FILE"
 fi
 
-# Pull the latest assistant text from the transcript for a 1-line summary.
-# Claude Code stores each assistant segment (thinking, tool_use, text) as its
-# own JSONL entry, so we have to walk back until we find one with text content,
-# not just take the most recent assistant entry (which is often a tool_use).
-SUMMARY=""
-if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
-  SUMMARY=$(tail -r "$TRANSCRIPT" 2>/dev/null | head -500 | \
+# Build a 1-line SUMMARY of the most recent assistant text.
+#
+# Priority order:
+#   1. last_assistant_message from the hook payload (Stop hook only). This is
+#      the just-finished turn's text and is the only source guaranteed to be
+#      current at hook-fire time.
+#   2. Transcript JSONL tail, walking back to find the most recent assistant
+#      message with text content. Used by non-Stop events (UserPromptSubmit,
+#      PostToolUse, PreToolUse, Notification), where last_assistant_message
+#      is not provided.
+#
+# Both sources are passed through the same trim: extract the final paragraph
+# (everything after the last blank line), collapse internal whitespace, then
+# cap at 500 chars.
+RAW_SUMMARY=""
+if [ -n "$LAST_ASSISTANT" ]; then
+  RAW_SUMMARY="$LAST_ASSISTANT"
+elif [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  RAW_SUMMARY=$(tail -r "$TRANSCRIPT" 2>/dev/null | head -500 | \
     jq -rs '
       map(select(.type == "assistant"))
       | map(
           .message.content
           | if type == "array"
-            then (map(select(.type == "text")) | .[0].text // "")
+            then (map(select(.type == "text")) | .[-1].text // "")
             else (. // "")
             end
         )
       | map(select(. != ""))
       | .[0] // empty
-    ' 2>/dev/null | \
-    tr '\n' ' ' | sed 's/  */ /g' | head -c 240)
+    ' 2>/dev/null)
+fi
+
+SUMMARY=""
+if [ -n "$RAW_SUMMARY" ]; then
+  # Extract the last paragraph (everything after the final blank line), then
+  # collapse internal whitespace and cap at 500 chars. macOS truncates the
+  # banner to ~3 visual lines anyway, but the expanded view in Notification
+  # Center will show the full body up to this cap.
+  SUMMARY=$(printf '%s' "$RAW_SUMMARY" | awk '
+    BEGIN { RS = "\n[[:space:]]*\n"; last = "" }
+    { if ($0 ~ /[^[:space:]]/) last = $0 }
+    END { print last }
+  ' | tr '\n' ' ' | sed 's/  */ /g' | sed 's/^ //; s/ $//' | head -c 500)
 fi
 
 # Pick visuals.
@@ -109,9 +138,21 @@ EOF
 # macOS notification when state flips to red (idle). Body and title vary by
 # hook event so the user sees the most useful copy for each case:
 #   PreToolUse + AskUserQuestion -> the question itself
-#   Notification (permission prompts) -> Claude Code's own message field
-#   Stop (turn end) -> last assistant text from transcript
-if [ "$STATE" = "idle" ]; then
+#   Stop (turn end) -> last assistant text (from payload or transcript)
+#   Notification with "waiting for your input" message -> SUPPRESSED. This is
+#     Claude Code's idle reminder, which duplicates the Stop banner that
+#     already fired. Tab color and badge still update.
+#   Notification with any other message (permission prompts, etc.) -> fires
+#     with the hook's message as the body, so the user knows Claude is
+#     blocked on something actionable.
+IS_IDLE_REMINDER=0
+if [ "$HOOK_EVENT" = "Notification" ] && \
+   printf '%s' "$HOOK_MESSAGE" | grep -qi 'waiting for your input'; then
+  IS_IDLE_REMINDER=1
+fi
+if [ "$STATE" = "idle" ] && [ "$IS_IDLE_REMINDER" = "0" ]; then
+  NOTIF_TITLE=""
+  NOTIF_BODY=""
   if [ -n "$QUESTION_TEXT" ]; then
     NOTIF_TITLE="❓ Claude needs an answer"
     NOTIF_BODY="$QUESTION_TEXT"
