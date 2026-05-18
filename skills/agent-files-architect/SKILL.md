@@ -1,6 +1,6 @@
 ---
 name: agent-files-architect
-description: Audit and selectively improve the user's first-class agent-loaded markdown files (CLAUDE.md, AGENTS.md, LOG.md, INDEX.md, MEMORY.md, plus any .md files referenced from a CLAUDE.md in the up-walk). Runs manually as a slash command and auto-fires inside `/close-out` when a TTL or activity trigger is hit. Produces a precedence graph, a stale-pointer scan, a context-weight report, a three-file gap list, and an INDEX.md link check; bundles only safe mechanical patches behind a single approval gate. Optional `--deep` mode walks downward from cwd. Optional `--research` flag fetches upstream guidance from Anthropic, OpenAI Codex, Cursor, Copilot, and agents.md to surface drift. Optional `--review` flag fires `/second-opinion panel`. Trigger when the user says "/agent-files-architect", "architect the agent files", "audit agent files", "tidy CLAUDE.md", "refresh agent files", "check agent docs", or any variant of "are my CLAUDE.md / AGENTS.md / LOG.md / INDEX.md / MEMORY.md still in good shape". Voice triggers (speech-to-text aliases): "architect the agent files", "audit agent files", "tidy claude dot em dee", "refresh agent files", "check agent docs".
+description: Audit and selectively improve the user's first-class agent-loaded markdown files (CLAUDE.md, AGENTS.md, LOG.md, INDEX.md, MEMORY.md, plus any .md files referenced from a CLAUDE.md in the up-walk). Runs manually as a slash command and auto-fires inside `/close-out` when a TTL or activity trigger is hit. Produces a precedence graph, a stale-pointer scan, a context-weight report, a three-file gap list, and an INDEX.md link check; bundles only safe mechanical patches behind a single approval gate. Optional `--deep` mode walks downward from cwd. Optional `--research` flag fetches upstream guidance from Anthropic, OpenAI Codex, Cursor, Copilot, and agents.md to surface drift. Optional `--review` flag fires `/second-opinion panel`. Optional `--tier-discipline` flag adds a qualitative pass that catches decorative content, inline procedures that should be skills, and sections duplicating skill content. Trigger when the user says "/agent-files-architect", "architect the agent files", "audit agent files", "tidy CLAUDE.md", "refresh agent files", "check agent docs", or any variant of "are my CLAUDE.md / AGENTS.md / LOG.md / INDEX.md / MEMORY.md still in good shape". Voice triggers (speech-to-text aliases): "architect the agent files", "audit agent files", "tidy claude dot em dee", "refresh agent files", "check agent docs".
 ---
 
 # Agent files architect
@@ -19,9 +19,9 @@ Out of scope (do not touch): `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `AR
 
 ## Step 0: Resolve mode and refuse bad invocations
 
-Parse flags from the slash arg: `--deep`, `--research`, `--review`, `--close-out`. All optional, all off by default.
+Parse flags from the slash arg: `--deep`, `--research`, `--review`, `--tier-discipline`, `--close-out`. All optional, all off by default.
 
-`--close-out` is the marker that says "you were invoked by /close-out, run silently, no menu, no extras". The first three are user-facing flags.
+`--close-out` is the marker that says "you were invoked by /close-out, run silently, no menu, no extras". The first four are user-facing flags. `--close-out` forces `--tier-discipline` off even if a user-facing flag set it; the close-out hot path stays mechanical-only.
 
 Refuse to run if cwd is `/`:
 
@@ -31,17 +31,19 @@ Refuse to run if cwd is `/`:
 
 If ALL of the following are true, present a mode-selection menu via `AskUserQuestion` before running anything:
 
-- No user flag was passed (`--deep`, `--research`, `--review` all absent).
+- No user flag was passed (`--deep`, `--research`, `--review`, `--tier-discipline` all absent).
 - `--close-out` was not passed.
 
-The menu is a single-select with four options:
+The menu is a single-select. The four user-facing flags are listed neutrally. `AskUserQuestion` caps options at 4, so the menu offers the recommended baseline plus three add-on modes; combining add-ons (e.g., `--tier-discipline --research`) is available to power users via direct flags only.
 
 | Option label | Description | Flag set |
 |---|---|---|
 | Standard audit (recommended) | Up-walk only. Precedence graph, stale pointers, size report, three-file gap, INDEX link check. Fast. | (none) |
-| Deep audit | Adds a downward walk into `~/dev/` subdirs to catch AGENTS.md and CLAUDE.md hidden in repos. Honors `.gitignore` and `.agent-doctor-ignore`. | `--deep` |
+| Standard + tier-discipline | Adds a qualitative pass over each CLAUDE.md section: per-section evidence features plus one batched LLM judgment call that flags decorative content, inline procedures that should be skills, and sections duplicating skill content. Advisory only. | `--tier-discipline` |
 | Standard + research drift | Adds an upstream-guidance fetch (Anthropic memory docs, Codex AGENTS.md, Cursor rules, agents.md) via `/browse` and surfaces drift. | `--research` |
 | Standard + expert panel | Adds a `/second-opinion panel` review of the audit output. | `--review` |
+
+`--deep` is intentionally not in the menu; power users invoke it directly. Its blast radius (downward walk into `~/dev/`) is large enough that a cold-invocation menu nudge would be the wrong default.
 
 `header` is "Mode". Question text: "Which audit mode? Standard is fine if you're not sure."
 
@@ -49,7 +51,7 @@ Combinations (e.g., `--deep --research`) remain available to power users via dir
 
 After selection, treat the chosen flag as if it had been passed on the command line, then continue to the roadmap print and Step 1.
 
-If `--close-out` was passed: skip the menu, skip Steps 7 and 8 unconditionally, and target the whole run under 2 seconds. Apply the trigger gate as documented in "Trigger gate from /close-out".
+If `--close-out` was passed: skip the menu, skip Steps 3.5, 7, and 8 unconditionally, and target the whole run under 2 seconds. Apply the trigger gate as documented in "Trigger gate from /close-out".
 
 ### Roadmap
 
@@ -60,6 +62,7 @@ agent-files-architect plan:
 - ⏳ 1. Discover in-scope files (up-walk[, deep])
 - ⏳ 2. Build precedence graph
 - ⏳ 3. Stale-pointer + context-weight + INDEX link check
+- ⏳ 3.5. (optional) --tier-discipline qualitative pass
 - ⏳ 4. Three-file gap report (advisory)
 - ⏳ 5. Bundle safe mechanical patches
 - ⏳ 6. Single approval gate
@@ -68,7 +71,7 @@ agent-files-architect plan:
 - ⏳ 9. Write report and update .last-run flag
 ```
 
-When called from `/close-out` (i.e., `--close-out` passed), the menu is bypassed and steps 7 and 8 are skipped unconditionally; whole-run budget under 2 seconds.
+When called from `/close-out` (i.e., `--close-out` passed), the menu is bypassed and steps 3.5, 7, and 8 are skipped unconditionally; whole-run budget under 2 seconds.
 
 ---
 
@@ -161,6 +164,74 @@ If/when measured guidance emerges (Anthropic doc, community benchmark, internal 
 ### INDEX.md link check
 
 For each INDEX.md found, parse markdown tables for link targets. `test -e` each. Misses go in the report.
+
+---
+
+## Step 3.5: Tier-discipline pass (`--tier-discipline` only)
+
+Skip silently when not invoked with `--tier-discipline`. `/close-out` never runs this step.
+
+Catches qualitative bloat that the mechanical steps miss: skill enumerations duplicating `/skills`, sections duplicating an installed skill's content, multi-step inline procedures that should themselves be skills, and explanatory prose that belongs in a sibling doc next to the skill it documents. The four motivating patterns observed on `~/.claude/CLAUDE.md` 2026-05-17: a 15-line gstack skill list (decorative), a coding-principles section duplicating the karpathy-guidelines skill (one-home violation), a 400-word Q&A loop architecture explainer (documentation, not rule), and a 5-step Karpathy gist procedure (how-to belongs in a skill).
+
+The pass is advisory only. Findings feed the "Proposals (not bundled)" section of `report.md`. The auto-apply patch bundle stays mechanical-only; rewrites need user judgment per section. This is consistent with the existing "Never in the bundle" list in Step 5.
+
+### Tier rubric (the contract Layer B applies)
+
+The four homes for a piece of guidance:
+
+1. **CLAUDE.md hard rule** (always-loaded, every session). Belongs here only if all three hold: (a) imperative wording (must/never/always/do not), (b) a concrete failure mode if not loaded every turn, (c) does not unfold into a 3+ step procedure.
+2. **Memory** (`~/.claude/projects/<slug>/memory/`, relevance-gated). Belongs here when: (a) the fact or preference applies in some contexts but not all, (b) it is a per-project state, decision record, or feedback rule that has not yet proven load-bearing enough to graduate to CLAUDE.md.
+3. **Skill** (`~/.claude/skills/<name>/SKILL.md`, on-demand). Belongs here when: (a) the content is a 3+ step how-to, (b) it has a clear invocation trigger (slash command, phrase, or auto-fire condition), (c) the inline form in CLAUDE.md would cost more tokens per turn than a one-line pointer plus on-demand load.
+4. **Archive doc** (sibling `.md` next to the skill, ARCHITECTURE.md style). Belongs here when: (a) descriptive or explanatory, not imperative, (b) documents how something works, not what to do.
+
+### Layer A: evidence extraction (no thresholds, no flags)
+
+For each section in each in-scope CLAUDE.md (sections delimited by h2/h3 headers), compute:
+
+- `bytes`, `word_count`
+- `imperative_count`: occurrences of `must`, `never`, `always`, `do not`, `avoid`, `use`, `prefer`, `required` (case-insensitive)
+- `longest_step_list`: length of the longest contiguous numbered list or imperative-bulleted list inside the section
+- `slash_prefix_ratio`: among bulleted items in the section, the fraction whose first non-whitespace token begins with `/` OR matches an installed skill name (read from `~/.claude/skills/*/SKILL.md` frontmatter `name:`)
+- `has_why`: presence of `Why:`, `Otherwise`, `If this isn't here`, `Reason`, `Without this`, or similar failure-mode clauses
+- `cross_skill_overlap`: list of installed skill names whose `description:` field shares >= 2 distinctive bigrams (case-folded, stop-words removed) with the section's first 150 words
+
+Write the full table to `tier-audit.md` under "Evidence (per section)". Columns only, no labels, no "candidate" verdicts, no thresholds. Data. The user reads the table directly; Layer B reads it as input.
+
+The bigram-overlap parameter (`>= 2`) is a search-recall knob, not a verdict threshold: it controls which skills are surfaced to Layer B as comparison candidates. Layer B decides whether the overlap is real.
+
+### Layer B: one batched LLM judgment call
+
+Compose a single prompt containing, in order:
+
+1. The tier rubric above, verbatim.
+2. The Layer A evidence table.
+3. The full text of each section (truncated to 400 words per section to bound the prompt; sections longer than 400 words are themselves a signal worth flagging, and 400 words is enough text to judge).
+4. The installed skill manifest: every `~/.claude/skills/*/SKILL.md` frontmatter `name:` and `description:` line.
+
+Ask for: per section, emit a finding ONLY if a concrete redirect target exists. Each finding must contain:
+
+- `file` + `section` (the h2/h3 title).
+- `evidence`: the specific 1-2 lines from the section that triggered the assessment, quoted.
+- `target_tier`: one of `claude-md-hard-rule`, `memory`, `skill`, `archive-doc`, `cut`.
+- `redirect_target`: a specific destination. Skill name (existing or proposed), memory file name, or sibling `.md` path. If the LLM cannot name a target, suppress the finding.
+- `what_breaks_if_absent`: one-sentence answer. If the LLM cannot articulate a failure mode, `target_tier` becomes `cut` and the field reads "no concrete failure mode identified".
+
+No `estimated_token_savings` field. The Layer A `bytes` column already conveys current cost; an "estimate" without a drafted rewrite is fake precision (the no-vibes rule).
+
+Output schema is JSON; the skill body emits the schema in the prompt and parses the response. Findings render into `tier-audit.md` under "Findings" and feed the "Proposals (not bundled)" section of `report.md`.
+
+### One call, not N
+
+Layer B is **one** LLM call over all flagged sections, with the evidence table and skill manifest in shared context. Never per-section. The cost target is one prompt of roughly (10-20 sections * 400 words) + rubric + skill manifest, comfortably under a single round trip. The skill body MUST batch.
+
+### Anti-patterns specific to this step
+
+- No section-level "candidate" or "decorative" labels in Layer A output. Evidence only.
+- No findings without a concrete `redirect_target`. "Looks bloated" with no destination is noise.
+- No `estimated_token_savings` precision. The user judges from raw bytes.
+- Layer B is ONE call. Per-section calls are forbidden by this skill's contract.
+- This step never runs under `--close-out` and never feeds the auto-apply bundle.
+- No rewriting in the skill itself. Findings describe the redirect; the rewrite is a separate user-initiated action.
 
 ---
 
@@ -272,6 +343,7 @@ Output layout (all under `~/.claude/agent-files-architect/`):
     precedence.md
     context-weight.md
     proposed-patches.diff
+    tier-audit.md                (only if --tier-discipline)
     research.md                  (only if --research)
     panel/                       (only if --review; mirrors /second-opinion output dir)
   latest -> <ISO-TS>/            (symlink, always points at most recent run)
@@ -363,6 +435,7 @@ The /second-opinion panel that vetted this skill flagged seven failure modes. Th
 5. **Slowing down `/close-out`.** Mandatory triggers gate the close-out hook: 7 days, 10 sessions, or 3 files touched. Target under 2 seconds when fired.
 6. **Auto-managed sentinel comments.** No `<!-- agent-managed -->` markers anywhere. They rot, get accidentally deleted, get duplicated. Source-of-truth comparison via the precedence graph is the alternative.
 7. **Bootstrap hallucination.** The three-file gap report is advisory. Never create placeholder CLAUDE.md / LOG.md / INDEX.md files. The user's `/dev/CLAUDE.md` bootstrap protocol is owned by humans plus the reference implementation, not by this skill.
+8. **Tier-discipline as default-on.** The qualitative pass is opt-in via `--tier-discipline` and never fires under `--close-out`. The four failure modes guarded against: (a) thresholds dressed as verdicts (Layer A emits evidence, not labels), (b) per-section LLM calls blowing latency (Layer B is one batched call), (c) "looks bloated" findings with no redirect target (suppressed), (d) fake-precision token-savings estimates (replaced with raw byte counts from Layer A).
 
 Additional rules:
 
