@@ -2,3 +2,5 @@ CLAUDE.md
 LOG.md
 INDEX.md
 skills/handoff/settings.json
+harness/tab-state-indicator/notification-trace.log
+harness/tab-state-indicator/stop-payload-dump.jsonl
