@@ -17,10 +17,10 @@ Karpathy publishes design patterns and mental models for working with LLMs in hi
 
 ## Procedure
 
-1. Use `/browse` (from gstack) to fetch `https://gist.github.com/karpathy` and extract the gist list: id, title, created date, last-active date.
+1. Use `/browse` (from gstack) to fetch `https://gist.github.com/karpathy` and extract the gist list: id, title, last-active date.
 2. Compare against `~/.claude/karpathy-seen.json` (the seen baseline).
 3. If anything is new or has been updated since the seen baseline:
-   - List new/changed gists, one line each (`id  title  date`).
+   - List new/changed gists, one line each (`id  title  last_active`).
    - Ask the user whether to read any of them now or defer.
 4. Overwrite `~/.claude/karpathy-last-check` with today's date (`YYYY-MM-DD`).
 5. Overwrite `~/.claude/karpathy-seen.json` with the fresh snapshot.
@@ -36,4 +36,4 @@ If `~/.claude/karpathy-seen.json` doesn't exist:
 
 - Use `/browse`, not WebFetch, per the gstack rule in `~/.claude/CLAUDE.md`.
 - Date format for `karpathy-last-check`: `YYYY-MM-DD` on a single line, no trailing newline issues.
-- `karpathy-seen.json` shape: `{ "snapshot_date": "YYYY-MM-DD", "gists": [{"id": "...", "title": "...", "last_active": "..."}] }`. Future runs diff against `gists[]`.
+- `karpathy-seen.json` shape: `{ "snapshot_date": "YYYY-MM-DD", "gists": [{"id": "...", "title": "...", "last_active": "..."}] }`. Future runs diff against `gists[]` and report `last_active` as the date column.
