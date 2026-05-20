@@ -40,6 +40,39 @@ if [ -z "$SESSION_ID" ]; then
   SESSION_ID="unknown-$$"
 fi
 
+# If the Stop hook fires while a Claude-managed background bash shell is still
+# running for this session, keep the tab green. Claude Code writes one JSON file
+# per live session into ~/.claude/sessions/<pid>.json with a `status` field; the
+# value `"shell"` means at least one background shell is outstanding (this is
+# the same signal that drives Claude Code's own "N shell still running" UI).
+# Fail open: if the file is missing, malformed, or the field has an unexpected
+# value, behave as before (flip to idle). This signal is undocumented; if it
+# ever drifts, a one-time warning lands in notification-trace.log.
+#
+# Timing note: Claude Code flips status from "busy" to "shell" AFTER the Stop
+# hook returns, not before. A naive single read at hook-fire time always sees
+# "busy". Poll briefly (100ms ticks, up to ~600ms total) so we can observe the
+# transition. Break early on "shell" (override to green) or on any settled
+# non-busy value (let today's idle flow run).
+if [ "$STATE" = "idle" ] && [ "$HOOK_EVENT" = "Stop" ]; then
+  SESSIONS_DIR="$HOME/.claude/sessions"
+  if [ -d "$SESSIONS_DIR" ]; then
+    for _ in 1 2 3 4 5 6; do
+      SESS_STATUS=$(jq -r --arg sid "$SESSION_ID" '
+        select(.sessionId == $sid) | .status // empty
+      ' "$SESSIONS_DIR"/*.json 2>/dev/null | head -1)
+      if [ "$SESS_STATUS" = "shell" ]; then
+        STATE="working"
+        break
+      fi
+      if [ -n "$SESS_STATUS" ] && [ "$SESS_STATUS" != "busy" ]; then
+        break
+      fi
+      sleep 0.1
+    done
+  fi
+fi
+
 TTY_FILE="$STATE_DIR/$SESSION_ID.tty"
 STATE_FILE="$STATE_DIR/$SESSION_ID.json"
 
