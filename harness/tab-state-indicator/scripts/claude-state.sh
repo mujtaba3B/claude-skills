@@ -5,7 +5,8 @@
 
 set -u
 
-command -v jq >/dev/null 2>&1 || { echo "claude-state.sh: jq is required but not installed" >&2; exit 0; }
+JQ_BIN=$(/usr/bin/command -v jq 2>/dev/null || true)
+[ -n "$JQ_BIN" ] || { echo "claude-state.sh: jq is required but not installed" >&2; exit 0; }
 
 STATE="${1:-idle}"
 STATE_DIR="$HOME/.claude/state"
@@ -58,7 +59,7 @@ if [ "$STATE" = "idle" ] && [ "$HOOK_EVENT" = "Stop" ]; then
   SESSIONS_DIR="$HOME/.claude/sessions"
   if [ -d "$SESSIONS_DIR" ]; then
     for _ in 1 2 3 4 5 6; do
-      SESS_STATUS=$(jq -r --arg sid "$SESSION_ID" '
+      SESS_STATUS=$("$JQ_BIN" -r --arg sid "$SESSION_ID" '
         select(.sessionId == $sid) | .status // empty
       ' "$SESSIONS_DIR"/*.json 2>/dev/null | head -1)
       if [ "$SESS_STATUS" = "shell" ]; then
