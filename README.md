@@ -1,9 +1,9 @@
-# mutwo
+# mutwo-skills
 
 Things I install on top of Claude Code to make it work the way I want. Published in case they're useful to you too.
 
-![License](https://img.shields.io/github/license/mujtaba3B/mutwo)
-![Latest release](https://img.shields.io/github/v/release/mujtaba3B/mutwo)
+![License](https://img.shields.io/github/license/mujtaba3B/mutwo-skills)
+![Latest release](https://img.shields.io/github/v/release/mujtaba3B/mutwo-skills)
 
 ## Why this repo
 
@@ -14,13 +14,13 @@ Two kinds of upgrades to a standard Claude Code install live here:
 
 Both install with the same `install.sh`. Skills go in `skills/`, harness mods in `harness/`.
 
-The name comes from my personal AI alias ("Mewtwo", second Mujtaba); the repo gets the spelling `mutwo`.
+The name comes from my personal AI alias ("Mewtwo", second Mujtaba); the repo gets the spelling `mutwo-skills`. Sibling repo `mutwo` is reserved for the maintainer's private NanoClaw instance.
 
 ## Install
 
 ```sh
-git clone https://github.com/mujtaba3B/mutwo.git ~/dev/mutwo
-cd ~/dev/mutwo
+git clone https://github.com/mujtaba3B/mutwo-skills.git ~/dev/mutwo-skills
+cd ~/dev/mutwo-skills
 ./install.sh
 ```
 
@@ -48,7 +48,7 @@ Restart your Claude Code session afterward so it picks up the new skills and hoo
 ## Updating
 
 ```sh
-cd ~/dev/mutwo
+cd ~/dev/mutwo-skills
 git pull
 ./install.sh   # idempotent: refreshes skill symlinks, harness mods unchanged
 ```
