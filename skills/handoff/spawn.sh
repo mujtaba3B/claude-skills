@@ -74,17 +74,21 @@ if [[ ! -d "$CWD" ]]; then
   exit 1
 fi
 
-# iTerm2's `split vertically with default profile command "..."` execs the command
-# directly without a shell, so compound commands (cd, &&, ;, |) need /bin/bash -c
-# wrapping or the new pane closes instantly.
+# Split with the default profile (no command), so the new session's stored
+# launch command is just the user's login shell. Then `write text` the actual
+# handoff command into that shell. This matters because iTerm2 copies the
+# source session's launch command into any pane created via Cmd+D or right-click
+# "Split Vertically" from that session. If we launched claude as the session's
+# command, every subsequent manual split in the same window would re-run the
+# handoff. Splitting with default profile and typing the command avoids that.
 #
 # Pass the prompt-file PATH through to AppleScript (not the contents) because
 # macOS `system attribute` truncates multi-line env vars at the first newline.
-# The receiving bash command reads the file at exec time via "$(cat -- ...)"
-# so multi-line prompts and shell metacharacters survive intact. The outer
-# double-quotes around $(cat ...) make it a single argv to claude; command
-# substitution output is not subject to word splitting or glob expansion
-# when quoted. The `--` guards against prompt-file paths that begin with `-`.
+# The shell reads the file at exec time via "$(cat -- ...)" so multi-line
+# prompts and shell metacharacters survive intact. The outer double-quotes
+# around $(cat ...) make it a single argv to claude; command substitution
+# output is not subject to word splitting or glob expansion when quoted.
+# The `--` guards against prompt-file paths that begin with `-`.
 CWD="$CWD" PROMPT_FILE="$file" CLAUDE_BIN="$CLAUDE_BIN" CLAUDE_EXTRA_ARGS="$CLAUDE_EXTRA_ARGS" osascript <<'APPLESCRIPT'
 set cwd to system attribute "CWD"
 set promptFile to system attribute "PROMPT_FILE"
@@ -99,7 +103,10 @@ tell application "iTerm"
   tell current window
     set invokingSession to current session
     tell invokingSession
-      split vertically with default profile command ("/bin/bash -c " & quoted form of innerCmd)
+      set newSession to (split vertically with default profile)
+    end tell
+    tell newSession
+      write text innerCmd
     end tell
   end tell
 end tell
