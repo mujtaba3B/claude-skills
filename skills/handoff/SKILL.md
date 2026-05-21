@@ -103,7 +103,7 @@ EOF
 ~/.claude/skills/handoff/spawn.sh "$TMPFILE" [<cwd-override>]
 ```
 
-The helper script handles iTerm2 AppleScript split-and-launch: it reads the prompt from the file, captures the invoking iTerm session, splits it vertically, and launches `claude "<prompt>"` as the new session's startup command (no `write text` race). It also inherits `--dangerously-skip-permissions` if any ancestor process has it (so a YOLO-mode parent spawns YOLO-mode children).
+The helper script handles iTerm2 AppleScript split-and-launch: it reads the prompt from the file, captures the invoking iTerm session, splits it vertically using the default profile (no command), then `write text`s `cd ... && exec claude "<prompt>"` into the new session. Splitting with the default profile and writing the command in afterward (instead of passing `command "..."` to the split) keeps the new pane's stored launch command as the user's login shell, so subsequent manual splits (Cmd+D, right-click) get a normal shell instead of re-running the handoff. It also inherits `--dangerously-skip-permissions` if any ancestor process has it (so a YOLO-mode parent spawns YOLO-mode children).
 
 Use the same `'HANDOFF_EOF'` swap rule for the temp-file heredoc if the prompt contains a literal `EOF` line.
 
