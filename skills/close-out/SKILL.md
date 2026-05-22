@@ -28,8 +28,10 @@ Before doing anything else, print the fixed roadmap (6 main steps plus a conditi
 
 - `⏳` pending
 - `🔄` in-progress
-- `✅` done
-- `❌` skipped (with reason inline)
+- `✅` done AND made a change (wrote a file, pushed, opened a PR, deleted a branch, etc.)
+- `❌` either conditionally skipped OR ran and found nothing to do (with reason inline)
+
+**The ✅/❌ distinction is about outcomes, not execution.** A step that ran successfully but produced no change gets `❌` with reason "nothing to do" (or similar), not `✅`. Reserve `✅` for steps that actually moved the world. This keeps the roadmap honest: at-a-glance scan of green checks tells the user exactly what changed.
 
 Initial print:
 
@@ -49,7 +51,9 @@ As each step completes, print a one-liner like `✅ Step N done. <one-line outco
 
 When a conditional step (4 or 5) is going to skip, mark it as `❌` with the reason at the moment you confirm the skip (during or right after Step 1), not later. Example: after inventory, if there were no `.pen` edits this session, immediately note `❌ Step 4 skipped: no .pen edits`.
 
-**Always render skipped steps with `❌` (red X), never hide them.** Skipped steps must remain visible in the running output and in the final roadmap reprint so the user can see at a glance what was bypassed and why. Do not omit a step from the roadmap just because it was skipped.
+Similarly, when an unconditional step (2, 5.7) runs and produces no change, mark it `❌` with reason "nothing to do" (or more specific: "no edits warranted", "no merged branches to prune"). Do not give it `✅` just because it executed without error.
+
+**Always render skipped or no-op steps with `❌` (red X), never hide them.** They must remain visible in the running output and in the final roadmap reprint so the user can see at a glance what didn't move. Do not omit a step from the roadmap just because it was skipped or did nothing.
 
 For Step 6, reprint the full roadmap with final markers so the run ends with a clear "here is everything that happened" view, then add the one-line summary.
 
