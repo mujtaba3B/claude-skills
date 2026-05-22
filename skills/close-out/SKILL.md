@@ -29,7 +29,7 @@ Before doing anything else, print the fixed roadmap (6 main steps plus a conditi
 - `⏳` pending
 - `🔄` in-progress
 - `✅` done
-- `⏭️` skipped (with reason inline)
+- `❌` skipped (with reason inline)
 
 Initial print:
 
@@ -47,7 +47,9 @@ Close-out plan:
 
 As each step completes, print a one-liner like `✅ Step N done. <one-line outcome>` and continue. Do not reprint the full roadmap between every step; the running output reconstructs progress.
 
-When a conditional step (4 or 5) is going to skip, mark it as `⏭️` with the reason at the moment you confirm the skip (during or right after Step 1), not later. Example: after inventory, if there were no `.pen` edits this session, immediately note `⏭️ Step 4 skipped: no .pen edits`.
+When a conditional step (4 or 5) is going to skip, mark it as `❌` with the reason at the moment you confirm the skip (during or right after Step 1), not later. Example: after inventory, if there were no `.pen` edits this session, immediately note `❌ Step 4 skipped: no .pen edits`.
+
+**Always render skipped steps with `❌` (red X), never hide them.** Skipped steps must remain visible in the running output and in the final roadmap reprint so the user can see at a glance what was bypassed and why. Do not omit a step from the roadmap just because it was skipped.
 
 For Step 6, reprint the full roadmap with final markers so the run ends with a clear "here is everything that happened" view, then add the one-line summary.
 
@@ -135,7 +137,7 @@ Do not try to distill inline here; the dedicated skill knows the contract.
 
 Invoke `/agent-files-architect --close-out`. The `--close-out` flag bypasses the manual mode menu and tells the skill to run silently. The skill then runs its own trigger gate (7 days since last run, 10 sessions since last run, or 3 agent files touched this session) and no-ops if nothing fires. Close-out passes the third signal through the `AGENT_FILES_TOUCHED_THIS_SESSION` env var, counted from Step 1 inventory (any session-touched file matching `CLAUDE.md`, `AGENTS.md`, `LOG.md`, `INDEX.md`, `MEMORY.md`, or a `.md` referenced from a CLAUDE.md in the up-walk).
 
-When fired, the architect runs up-walk only (no `--deep`, `--research`, or `--review`), targets a whole-run budget under 2 seconds, and applies the single approval gate inline. If the user declines the bundle, the report is saved and close-out continues to Step 6. If no trigger fires, mark this step `⏭️` with reason "no trigger" and move on.
+When fired, the architect runs up-walk only (no `--deep`, `--research`, or `--review`), targets a whole-run budget under 2 seconds, and applies the single approval gate inline. If the user declines the bundle, the report is saved and close-out continues to Step 6. If no trigger fires, mark this step `❌` with reason "no trigger" and move on.
 
 Do not duplicate the gate logic here; the architect owns it.
 
@@ -175,9 +177,9 @@ Close-out plan:
 - ✅ 1. Inventory (3 repos, 4 touched files, no Q+A pending)
 - ✅ 2. Decide and apply edits (LOG x3, memory x1)
 - ✅ 3. Push and PR (PR #4 opened on public-claude-skills)
-- ⏭️ 4. Pencil sweep (no .pen edits this session)
-- ⏭️ 5. Distill Q+A (no pending entries)
-- ⏭️ 5.5. Agent files architect (no trigger)
+- ❌ 4. Pencil sweep (no .pen edits this session)
+- ❌ 5. Distill Q+A (no pending entries)
+- ❌ 5.5. Agent files architect (no trigger)
 - ✅ 5.7. Cleanup stale branches (deleted 2 in mutwo, 0 elsewhere; now on main)
 - ✅ 6. Summary
 ```
