@@ -41,7 +41,7 @@ Close-out plan:
 - ⏳ 2. Decide and apply edits (LOG / INDEX / CLAUDE / memory / README)
 - ⏳ 3. Push and PR (direct push or open PR depending on branch protection)
 - ⏳ 4. Pencil sweep (only if .pen was edited and a deploy happened)
-- ⏳ 5. Distill Q+A pending log (only if pending entries exist)
+- ⏳ 5. Memory-candidate batch review (only if candidates file has entries)
 - ⏳ 5.5. Agent files architect (only if TTL/session/activity trigger fires)
 - ⏳ 5.7. Cleanup stale branches and return to main (per touched repo)
 - ⏳ 6. Summary
@@ -127,15 +127,40 @@ Skip entirely if no `.pen` files were touched this session OR no deploy happened
 
 If both apply: use `mcp__pencil__get_editor_state` to find `🚧 NEW NEW ` frames in each touched `.pen`, cross-reference what actually shipped (use the diff / commits / LOG entry you just wrote), and apply demotions (remove prefix, remove orange dashed stroke) for the frames whose content is in production. Demotions are reversible, so apply directly. Add a brief note under the relevant `[<feature>][spec]` LOG tag so the wireframe state stays auditable.
 
-### Step 5: Distill the question-and-answer pending log
+### Step 5: Memory-candidate batch review
 
-The `AskUserQuestion` capture hook (`~/.claude/scripts/question-and-answer-capture.sh`) appends raw Q+A captures to `~/.claude/projects/-Users-mujtaba-dev/memory/.question-and-answer-pending.jsonl`. Close-out is the natural point to process them.
+Two passive capture hooks append to `~/.claude/projects/<project>/memory/.memory-candidates.jsonl` during the session:
 
-- Count `status: "pending"` lines in that JSONL.
-- If zero: skip this step silently. No mention in the summary.
-- If non-zero: invoke `/distill-question-and-answer-log-to-principles`. The skill walks each pending entry, surfaces proposals one at a time, and writes only what the user approves. It also handles the conflict hierarchy (CLAUDE.md beats feedback memory beats question_and_answer_decision).
+- `memory-candidate-capture.sh` (PostToolUse on `AskUserQuestion`): every Q+A answer, except gate prompts with reserved headers (`"Memory writes"`, `"CLAUDE.md edit"`).
+- `prose-correction-capture.sh` (UserPromptSubmit): user prompts matching correction patterns (`actually`, `no, don't`, `from now on`, `remember:`, `stop doing`, `always`, `never`, `i said`).
 
-Do not try to distill inline here; the dedicated skill knows the contract.
+Close-out is the only point where these candidates get written into durable memory.
+
+**Procedure:**
+
+1. Read `.memory-candidates.jsonl`. If empty or absent: skip this step (no modal, no summary line).
+2. For each candidate line, classify locally (no subagent):
+   - `durable` (a principle that should govern future work)
+   - `one-off` (situational, not generalizable)
+   - `already-covered` (existing memory or CLAUDE.md already says this)
+   - `contradicts` (clashes with an existing memory or CLAUDE.md line; list the conflicting file in the option description)
+3. Build one `AskUserQuestion` with `header: "Memory writes"`, `multiSelect: true`. Cap at 20 options; defer the rest by leaving their lines in the file (do not present, do not truncate them this run).
+   - Option `label`: short title (under 50 chars).
+   - Option `description`: lead with the category tag (`[durable]`, `[one-off]`, `[already-covered]`, `[contradicts:<file>]`), then the action (`new <type>_<slug>.md` or `update <existing.md>`), then a one-line glimpse of the proposed content. For `[contradicts:<file>]`, selecting the option means "apply anyway and update or supersede the conflicting file"; not selecting means "drop".
+   - Question text: `Which of these memories should I write? (Each persists across all future sessions.)`
+4. For each approved candidate:
+   - Pick storage type from the classifier proposal (`user_` / `feedback_` / `project_` / `reference_`); follow the body-structure guidance in the global auto-memory protocol (lead with the rule or fact, then `**Why:**` and `**How to apply:**` for `feedback_` and `project_` types).
+   - Write `<type>_<slug>.md` with frontmatter (`name`, `description`, `type`).
+   - Append one line to `MEMORY.md` (`- [Title](file.md) - one-line hook`).
+5. For each rejected candidate, append the original JSONL line verbatim to `.memory-rejected.jsonl` (audit log). Never re-present rejected lines.
+6. Truncate the presented lines from `.memory-candidates.jsonl`. Any lines that arrived after step 3 (newer timestamp) stay for the next close-out.
+
+**Skip conditions:**
+
+- Non-interactive mode (`claude -p`, CI, scripted invocations): skip the modal; surface a warning per candidate (`Memory write skipped: <slug>`). Candidates file is not truncated; they wait for the next interactive run.
+- File empty or missing: silent skip.
+
+**CLAUDE.md edits surfaced by candidates.** If a candidate's content really belongs in a `CLAUDE.md` rather than a memory file, surface it as a separate option whose description leads with `[claude-md:<path>]`. Selecting it triggers the per-write CLAUDE.md edit gate (header `"CLAUDE.md edit"`) inline. Do not bundle CLAUDE.md edits silently into the memory-writes batch.
 
 ### Step 5.5: Agent files architect (conditional)
 
@@ -172,7 +197,7 @@ Tests for this helper live in `~/.claude/skills/close-out/test_cleanup_branches.
 
 Reprint the full roadmap with final markers, then end with one or two lines like:
 
-> Closed out. Updated LOG.md (3 entries across 2 repos), saved 1 memory, distilled 4 pending Q+A (2 approved). PR opened on public-claude-skills (link). CLAUDE / INDEX / README unchanged. No Pencil sweep.
+> Closed out. Updated LOG.md (3 entries across 2 repos), saved 1 memory, reviewed 4 memory candidates (2 approved). PR opened on public-claude-skills (link). CLAUDE / INDEX / README unchanged. No Pencil sweep.
 
 Final roadmap reprint should look like:
 
@@ -182,7 +207,7 @@ Close-out plan:
 - ✅ 2. Decide and apply edits (LOG x3, memory x1)
 - ✅ 3. Push and PR (PR #4 opened on public-claude-skills)
 - ❌ 4. Pencil sweep (no .pen edits this session)
-- ❌ 5. Distill Q+A (no pending entries)
+- ❌ 5. Memory-candidate batch (no candidates)
 - ❌ 5.5. Agent files architect (no trigger)
 - ✅ 5.7. Cleanup stale branches (deleted 2 in mutwo, 0 elsewhere; now on main)
 - ✅ 6. Summary
