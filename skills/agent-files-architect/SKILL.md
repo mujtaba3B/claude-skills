@@ -90,7 +90,7 @@ Always also include:
 
 - `~/.claude/CLAUDE.md` (Claude Code's user-level memory file, always loaded).
 - Any sibling `.md` spec files in dirs that already host a CLAUDE.md (e.g., `WIREFRAMES.md`, `STANDARD.md`, `TOOLING.md`, `DESIGN.md` next to a CLAUDE.md).
-- `~/.claude/projects/<project-slug>/memory/MEMORY.md` matching the current project, plus the `feedback_*.md` and `question_and_answer_decision_*.md` files in that dir, when the auto-memory system is in use.
+- `~/.claude/projects/<project-slug>/memory/MEMORY.md` matching the current project, plus the `feedback_*.md`, `project_*.md`, `reference_*.md`, and `user_*.md` files in that dir, when the auto-memory system is in use.
 
 For each CLAUDE.md found, scan for inline pointers to other `.md` files (regex on relative paths and on absolute paths under `$HOME`) and pull those into the in-scope set. One hop only, no recursion: a referenced spec does not get its references followed.
 
@@ -129,7 +129,7 @@ Authoritative-wins hierarchy (highest first):
 2. Any intermediate `CLAUDE.md` found in the up-walk between `~/.claude/` and the project (e.g., a workspace-level `CLAUDE.md` if the user keeps one)
 3. Project `CLAUDE.md` (closest to cwd that is not one of the above)
 4. `feedback_*.md` in the project memory dir
-5. `question_and_answer_decision_*.md` in the project memory dir
+5. `project_*.md` / `reference_*.md` / `user_*.md` in the project memory dir (lower-tier facts and context, not durable principles)
 
 Render `precedence.md` as a list of topics; each topic shows:
 
@@ -264,7 +264,7 @@ Never in the bundle:
 - Prose rewrites.
 - LOG.md archive splits.
 - Contradiction resolutions between precedence-graph nodes.
-- Anything that touches a `feedback_*.md` or `question_and_answer_decision_*.md` (those have their own write path through the distill skill).
+- Anything that touches a `feedback_*.md`, `project_*.md`, `reference_*.md`, or `user_*.md` (those have their own write path through the batched memory-writes gate at `/close-out`).
 
 Render `proposed-patches.diff` as a single unified diff covering the bundle. Render proposals-only items as a separate "Proposals (not bundled)" section in `report.md`.
 
