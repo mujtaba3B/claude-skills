@@ -129,7 +129,7 @@ If both apply: use `mcp__pencil__get_editor_state` to find `🚧 NEW NEW ` frame
 
 ### Step 5: Memory-candidate batch review
 
-Two passive capture hooks append to `~/.claude/projects/-Users-mujtaba-dev/memory/.memory-candidates.jsonl` during the session:
+Two passive capture hooks append to `~/.claude/projects/<project>/memory/.memory-candidates.jsonl` during the session:
 
 - `memory-candidate-capture.sh` (PostToolUse on `AskUserQuestion`): every Q+A answer, except gate prompts with reserved headers (`"Memory writes"`, `"CLAUDE.md edit"`).
 - `prose-correction-capture.sh` (UserPromptSubmit): user prompts matching correction patterns (`actually`, `no, don't`, `from now on`, `remember:`, `stop doing`, `always`, `never`, `i said`).
