@@ -136,21 +136,31 @@ fi
 echo "$NOW" > "$FLAG"
 
 check_one() {
-  local pkg="$1"; local cmd="$2"
-  local installed latest
+  local pkg="$1"; local cmd="$2"; local brew_cask="$3"
+  local installed latest resolved upgrade
   installed=$("$cmd" --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
   latest=$(timeout 2 npm view "$pkg" version 2>/dev/null)
   if [ -z "$installed" ] || [ -z "$latest" ]; then
     return 0  # silent fail: cannot determine, do not block dispatch
   fi
   if [ "$installed" != "$latest" ]; then
-    echo "STALE|$cmd|$installed|$latest|$pkg"
+    # Detect install source from the resolved binary path so the upgrade
+    # command matches how the CLI was actually installed. Two binaries on
+    # disk (brew + npm) at different versions is a debugging trap.
+    resolved=$(readlink -f "$(command -v "$cmd")" 2>/dev/null || command -v "$cmd")
+    case "$resolved" in
+      */Cellar/*|*/homebrew/*|/opt/homebrew/*)
+        upgrade="brew upgrade --cask $brew_cask" ;;
+      *)
+        upgrade="npm install -g $pkg@latest" ;;
+    esac
+    echo "STALE|$cmd|$installed|$latest|$pkg|$upgrade"
   fi
 }
 
 # Run both checks in parallel and capture stale lines.
-check_one "@openai/codex" "codex" > /tmp/.so-codex-check &
-check_one "@google/gemini-cli" "gemini" > /tmp/.so-gemini-check &
+check_one "@openai/codex"      "codex"  "codex"      > /tmp/.so-codex-check &
+check_one "@google/gemini-cli" "gemini" "gemini-cli" > /tmp/.so-gemini-check &
 wait
 cat /tmp/.so-codex-check /tmp/.so-gemini-check 2>/dev/null
 rm -f /tmp/.so-codex-check /tmp/.so-gemini-check
@@ -160,20 +170,24 @@ rm -f /tmp/.so-codex-check /tmp/.so-gemini-check
 
 If the block prints nothing (or only "stale-check: skipped"), proceed silently to Step 4. Do not surface the check to the user.
 
-If one or more `STALE|...` lines are present, print a one-line warning per stale CLI:
+If one or more `STALE|...` lines are present, parse each line as `STALE|cmd|installed|latest|pkg|upgrade_cmd` and print a one-line warning per stale CLI using the detected upgrade command:
 
-> `codex: installed 0.130.0 → latest 0.131.0. Upgrade: npm install -g @openai/codex@latest`
+> `codex: installed 0.130.0 → latest 0.132.0. Upgrade: brew upgrade --cask codex`
+
+(The upgrade command is `brew upgrade --cask <cask>` when the resolved binary lives under Homebrew, otherwise `npm install -g <pkg>@latest`. Detection happens in `check_one`; do not second-guess it here.)
 
 Then use `AskUserQuestion` with one question, three options:
 
 - Question header: `Upgrade`
 - Question: "One or more CLIs are behind. Upgrade now before dispatching?"
 - Options:
-  - `Upgrade now` (run `npm install -g <pkg>@latest` for each stale CLI synchronously, verify the new `--version`, then dispatch)
+  - `Upgrade now` (run each stale CLI's detected upgrade command synchronously, verify the new `--version`, then dispatch)
   - `Skip and dispatch with current` (proceed to Step 4 unchanged)
   - `Defer (do not ask again for 24h)` (proceed to Step 4; the touched flag already silences this for the TTL window)
 
-If `Upgrade now` is chosen, run the installs **synchronously**, in a single command (e.g. `npm install -g @openai/codex@latest @google/gemini-cli@latest` if both are stale). Do NOT background the install. A mid-dispatch global npm install can change the binary the current run is about to use; that is a footgun, not a feature. After install completes, re-read `<cli> --version` and confirm it matches latest before dispatching. If the install fails, surface the error and ask whether to proceed with the old CLI or abort.
+If `Upgrade now` is chosen, run each stale CLI's `upgrade_cmd` **synchronously and serially** (brew and npm cannot be combined into one command). Do NOT background the install. A mid-dispatch global install can change the binary the current run is about to use; that is a footgun, not a feature. After each install completes, re-read `<cli> --version` and confirm it matches latest before dispatching. If an install fails, surface the error and ask whether to proceed with the old CLI or abort.
+
+Anti-pattern specific to upgrade dispatch: never run `npm install -g <pkg>` when the user's active binary is from brew. The npm install lands in a node bin dir that may not be on the login shell PATH (e.g. nvm-managed node), producing a shadowed second copy that drifts independently. The detection above prevents this; if you find yourself about to override it ("the user has npm, let's just use it"), stop and trust `command -v`.
 
 ### Hot-path latency
 
