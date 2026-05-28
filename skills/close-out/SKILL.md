@@ -138,7 +138,7 @@ Close-out is the only point where these candidates get written into durable memo
 
 **Procedure:**
 
-1. Read `.memory-candidates.jsonl`. If empty or absent: skip this step (no modal, no summary line).
+1. Read `.memory-candidates.jsonl`. If empty or absent: skip this step (no modal, no summary line). **Scope by current cwd.** Each candidate JSONL line carries a `cwd` field captured at write time. Partition the lines into two sets: `IN_SCOPE` where `cwd` equals the close-out cwd (the directory the user invoked `/close-out` from), and `OTHER_CWD` for everything else. Only `IN_SCOPE` candidates feed Steps 2-5 below. `OTHER_CWD` lines stay in `.memory-candidates.jsonl` untouched for the close-out that runs from that cwd, and surface in this run's summary as `N candidates deferred (from other cwds: <comma-separated cwd basenames>)` so the user knows they exist without being asked to triage them. Rationale: parallel Claude sessions in different project dirs each write into the same candidate file; without this filter, /close-out in project A asks the user to confirm memory writes for unrelated work-in-progress in project B.
 2. For each candidate line, classify locally (no subagent):
    - `durable` (a principle that should govern future work)
    - `one-off` (situational, not generalizable)
@@ -153,7 +153,7 @@ Close-out is the only point where these candidates get written into durable memo
    - Write `<type>_<slug>.md` with frontmatter (`name`, `description`, `type`).
    - Append one line to `MEMORY.md` (`- [Title](file.md) - one-line hook`).
 5. For each rejected candidate, append the original JSONL line verbatim to `.memory-rejected.jsonl` (audit log). Never re-present rejected lines.
-6. Truncate the presented lines from `.memory-candidates.jsonl`. Any lines that arrived after step 3 (newer timestamp) stay for the next close-out.
+6. Truncate the presented (IN_SCOPE) lines from `.memory-candidates.jsonl`. Preserve `OTHER_CWD` lines (they belong to other parallel sessions) and any lines that arrived after step 3 (newer timestamp). Implementation: rewrite the candidates file to contain only `OTHER_CWD` lines plus any newer-than-step-3 IN_SCOPE arrivals; don't blanket-truncate.
 
 **Skip conditions:**
 
