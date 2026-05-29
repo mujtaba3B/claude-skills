@@ -164,7 +164,9 @@ Close-out is the only point where these candidates get written into durable memo
 
 ### Step 5.5: Agent files architect (conditional)
 
-Invoke `/agent-files-architect --close-out`. The `--close-out` flag bypasses the manual mode menu and tells the skill to run silently. The skill then runs its own trigger gate (7 days since last run, 10 sessions since last run, or 3 agent files touched this session) and no-ops if nothing fires. Close-out passes the third signal through the `AGENT_FILES_TOUCHED_THIS_SESSION` env var, counted from Step 1 inventory (any session-touched file matching `CLAUDE.md`, `AGENTS.md`, `LOG.md`, `INDEX.md`, `MEMORY.md`, or a `.md` referenced from a CLAUDE.md in the up-walk).
+**Availability gate first.** This step depends on the `agent-files-architect` skill, which is distributed separately and may not be installed. Before invoking, check that it is present (e.g. `~/.claude/skills/agent-files-architect/SKILL.md` exists, or the slash command resolves). If it is not installed, skip this step silently and mark it `❌` with reason "agent-files-architect not installed", then continue to Step 5.7. Do not error or stop close-out over a missing optional dependency.
+
+If it is installed, invoke `/agent-files-architect --close-out`. The `--close-out` flag bypasses the manual mode menu and tells the skill to run silently. The skill then runs its own trigger gate (7 days since last run, 10 sessions since last run, or 3 agent files touched this session) and no-ops if nothing fires. Close-out passes the third signal through the `AGENT_FILES_TOUCHED_THIS_SESSION` env var, counted from Step 1 inventory (any session-touched file matching `CLAUDE.md`, `AGENTS.md`, `LOG.md`, `INDEX.md`, `MEMORY.md`, or a `.md` referenced from a CLAUDE.md in the up-walk).
 
 When fired, the architect runs up-walk only (no `--deep`, `--research`, or `--review`), targets a whole-run budget under 2 seconds, and applies the single approval gate inline. If the user declines the bundle, the report is saved and close-out continues to Step 6. If no trigger fires, mark this step `❌` with reason "no trigger" and move on.
 
