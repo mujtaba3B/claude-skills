@@ -38,7 +38,6 @@ Restart your Claude Code session afterward so it picks up the new skills and hoo
 
 | Name | Type | What it does | Install |
 |------|------|--------------|---------|
-| [agent-files-architect](skills/agent-files-architect/) | Skill | Audits and selectively improves `CLAUDE.md` / `AGENTS.md` / `LOG.md` / `INDEX.md` / `MEMORY.md`. Produces a precedence graph, stale-pointer scan, gap list. | `./install.sh skills` |
 | [close-out](skills/close-out/) | Skill | End-of-session housekeeping. Walks project docs and persistent memory to apply this session's decisions and durable knowledge. | `./install.sh skills` |
 | [handoff](skills/handoff/) | Skill | Hands off the current work to a fresh Claude session (vertical iTerm2 split) or copies a self-contained handoff prompt to the clipboard. | `./install.sh skills` |
 | [second-opinion](skills/second-opinion/) | Skill | Four modes: get a second opinion from Claude, Codex, Gemini, or a panel of all three in parallel. | `./install.sh skills` |
