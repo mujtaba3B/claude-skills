@@ -106,6 +106,11 @@ tell application "iTerm"
       set newSession to (split vertically with default profile)
     end tell
     tell newSession
+      -- Give the freshly spawned shell time to render its prompt before
+      -- keystrokes land. Without this, the first character of innerCmd can be
+      -- eaten or merged with the prompt (e.g. "cd ..." arriving as "ecd ..."),
+      -- which errors with "command not found: ecd".
+      delay 1
       write text innerCmd
     end tell
   end tell
